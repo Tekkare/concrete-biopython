@@ -1,17 +1,18 @@
 from concrete import fhe
 import numpy as np
 
-from BioConcrete.HfeSeq import HfeSeq
-from BioConcrete.Seq import Seq
+from BioConcrete.FheSeq import FheSeq
+from Bio.Seq import Seq, MutableSeq
+from BioConcrete.utils import seqToIntegers, seqFromIntegers
 
 
 
 def dna_complement(encrypted_integers):
-    encSeq = HfeSeq(encrypted_integers)
+    encSeq = FheSeq(encrypted_integers)
     return encSeq.complement().toArray()
 
 def dna_reverse_complement(encrypted_integers):
-    encSeq = HfeSeq(encrypted_integers)
+    encSeq = FheSeq(encrypted_integers)
     return encSeq.reverse_complement().toArray()
 
 
@@ -23,8 +24,7 @@ class BioConcreteCircuit:
             np.random.randint(0, 4, size=(seq_length,))
             for _ in range(100)
         ]
-        # initialize with dna_complement as default circuit function
-        self.set(dna_complement)
+        self.circuit = None
 
     def set(self, circuitFunction, verbose=False):
         compiler = fhe.Compiler(lambda data: circuitFunction(data), {"data": "encrypted"})
@@ -40,17 +40,15 @@ class BioConcreteCircuit:
         )
     
     def run(self, seq, simulate=False):
+        if not self.circuit: raise Error('circuit was not set')
         assert len(seq) == self.seq_length, f"Sequence length is not correct, should be {self.seq_length} characters"
 
         # convert letters to integers
-        integer_array = seq.toIntegers()
-        if not simulate:
-            complement_seq = self.circuit.encrypt_run_decrypt(integer_array)
-        else:
-            complement_seq = self.circuit.simulate(integer_array)
+        integers = seqToIntegers(seq)
+        output_seq = self.circuit.simulate(integers) if simulate else self.circuit.encrypt_run_decrypt(integers)
 
         # convert back integers to letters    
-        return Seq.fromIntegers(complement_seq)
+        return seqFromIntegers(output_seq)
 
 
 
@@ -73,6 +71,7 @@ print('processing sequence : ', seq)
 #### complement
 print('\ncomplement :')
 
+circuit.set(dna_complement)
 decrypted_seq = circuit.run(seq, args.sim)
 
 print("decrypted :", decrypted_seq)
