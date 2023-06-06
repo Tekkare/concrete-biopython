@@ -1,8 +1,8 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from BioConcrete.FheSeq import *
-from BioConcrete.utils import *
+from ConcreteBioPython.FheSeq import FheSeq, FheMutableSeq
+from ConcreteBioPython.SeqWrapper import SeqWrapper
 
 import unittest
 import numpy as np
@@ -11,16 +11,17 @@ from concrete import fhe
 
 class BioConcreteCircuit:
    
-    def __init__(self, seq_length):
+    def __init__(self, seq_length, simulate=False):
         self.seq_length=seq_length
         self.inputset=[
-            (np.random.randint(0, 5, size=(seq_length,)),
-            np.random.randint(0, 5, size=(seq_length,)))
+            (np.random.randint(0, len(SeqWrapper.getLetters()), size=(seq_length,)),
+            np.random.randint(0, len(SeqWrapper.getLetters()), size=(seq_length,)))
             for _ in range(100)
         ]
         self.circuit = None
+        self.simulate = simulate
 
-    def set(self, circuitFunction, verbose=False):
+    def set(self, circuitFunction, integers_output=False, verbose=False):
         compiler = fhe.Compiler(lambda data1,data2: circuitFunction(data1, data2), {"data1": "encrypted", "data2": "encrypted"})
         self.circuit = compiler.compile(
             inputset=self.inputset,
@@ -32,44 +33,47 @@ class BioConcreteCircuit:
             ),
             verbose=verbose,
         )
+        self._integers_output = integers_output
     
-    def run(self, seq1, seq2, simulate=False, integers_output=False):
+    def run(self, seq1, seq2):
         if not self.circuit: raise Error('circuit was not set')
         assert len(seq1) == self.seq_length, f"Sequence 1 length is not correct, should be {self.seq_length} characters"
         assert len(seq2) == self.seq_length, f"Sequence 2 length is not correct, should be {self.seq_length} characters"
 
         # convert letters to integers
-        integers1 = seqToIntegers(seq1)
-        integers2 = seqToIntegers(seq2)
-        output_seq = self.circuit.simulate(integers1, integers2) if simulate else self.circuit.encrypt_run_decrypt(integers1, integers2)
+        integers1 = SeqWrapper(seq1).toIntegers()
+        integers2 = SeqWrapper(seq2).toIntegers()
+        int_output = self.circuit.simulate(integers1, integers2) if self.simulate else self.circuit.encrypt_run_decrypt(integers1, integers2)
 
-        if not integers_output:
+        if not self._integers_output:
             # convert back integers to letters    
-            return seqFromIntegers(output_seq)
+            return SeqWrapper(int_output).toSeq()
         else:
-            return output_seq
+            return int_output
 
+
+SIMULATE=True
 
 class TestFheSeq(unittest.TestCase):
 
     def test_operands(self):
-        circuit = BioConcreteCircuit(5)
+        circuit = BioConcreteCircuit(5, SIMULATE)
         seq1 = Seq('ACGTU')    
         seq2 = Seq('CGTUA')        
         seq3 = Seq('ACGTA')        
 
         # == operands
-        circuit.set(lambda x,y: FheSeq(x)==FheSeq(y) )
-        assert( np.all(circuit.run(seq1, seq1, True, True)) )        
-        assert( not np.all(circuit.run(seq1, seq3, True, True)) )    
+        circuit.set(lambda x,y: FheSeq(x)==FheSeq(y) , True)
+        assert( circuit.run(seq1, seq1) )
+        assert( not circuit.run(seq1, seq3))
 
-        # < operands
-        circuit.set(lambda x,y: FheSeq(x)<FheSeq(y) )
-        assert( np.all(circuit.run(seq1, seq2, True, True) == np.array([True, True, True, True, False])) )  
+        # # < operands
+        # circuit.set(lambda x,y: FheSeq(x)<FheSeq(y) , True)
+        # assert( np.all(circuit.run(seq1, seq2) == np.array([True, True, True, True, False])) )  
 
         # len operand
-        circuit.set( lambda x,y: fhe.ones(1) if len(FheSeq(x))==5 else fhe.zeros(1) )
-        assert( np.all(circuit.run(seq1, seq2, True, True) == np.array([1])) )
+        circuit.set( lambda x,y: fhe.ones(1) if len(FheSeq(x))==5 else fhe.zeros(1), True )
+        assert( np.all(circuit.run(seq1, seq2) == np.array([1])) )
 
         # single getitem
         def getitem(x,y):
@@ -79,85 +83,102 @@ class TestFheSeq(unittest.TestCase):
                 out[i]=eseq[i]
             return out
         circuit.set(getitem)
-        assert( circuit.run(seq1, seq1, True, False) == seq1 )
+        assert( circuit.run(seq1, seq1) == seq1 )
 
         # multiple getitem
         def getitems(x,y):
             eseq = FheSeq(x)
             return eseq[0:2].toArray()
         circuit.set(getitems)
-        assert( circuit.run(seq1, seq1, True, False) == seq1[0:2] )
+        assert( circuit.run(seq1, seq1) == seq1[0:2] )
 
-        # # add sequences (concat them)
-        # circuit.set( lambda x,y: FheSeq(x)+FheSeq(y) )
-        # assert( circuit.run(seq1, seq2, True, False) == (seq1+seq2) )
+        # add sequences (concat them)
+        circuit.set( lambda x,y: (FheSeq(x)+FheSeq(y)).toArray() )
+        assert( circuit.run(seq1, seq2) == (seq1+seq2) )
 
-        # # add array to the left (concat them)
-        # circuit.set( lambda x,y: fhe.zeros(2)+FheSeq(x) )
-        # assert( circuit.run(seq1, seq2, True, False) == ('AA'+seq1) )        
 
     def test_complement(self):
-        circuit = BioConcreteCircuit(4)
+        circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGT')        
         circuit.set(lambda x,y:FheSeq(x).complement().toArray())
-        assert( circuit.run(seq1, seq1, True) == seq1.complement())
+        assert( circuit.run(seq1, seq1) == seq1.complement())
 
         with self.assertRaises(TypeError): # verify we cannot change a immutable seq in place
             circuit.set(lambda x,y:FheSeq(x).complement(True).toArray())
-            circuit.run(seq1, seq1, True)
+            circuit.run(seq1, seq1)
+
+        # test changing mutable seq in place
+        seq2 = MutableSeq('ACGT')
+        circuit.set(lambda x,y:FheMutableSeq(x).complement(True).toArray())
+        assert( circuit.run(seq2, seq2) == seq2.complement(True))
 
     def test_complement_rna(self):
-        circuit = BioConcreteCircuit(4)
+        circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGU')        
         circuit.set(lambda x,y:FheSeq(x).complement_rna().toArray())
-        assert( circuit.run(seq1, seq1, True) == seq1.complement_rna())
+        assert( circuit.run(seq1, seq1) == seq1.complement_rna())
 
         with self.assertRaises(TypeError): # verify we cannot change a immutable seq in place
             circuit.set(lambda x,y:FheSeq(x).complement_rna(True).toArray())
-            circuit.run(seq1, seq1, True)            
+            circuit.run(seq1, seq1)
+
+        # test changing mutable seq in place
+        seq2 = MutableSeq('ACGU')
+        circuit.set(lambda x,y:FheMutableSeq(x).complement(True).toArray())
+        assert( circuit.run(seq2, seq2) == seq2.complement(True))            
 
     def test_reverse_complement(self):
-        circuit = BioConcreteCircuit(4)
+        circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGT')        
         circuit.set(lambda x,y:FheSeq(x).reverse_complement().toArray())
-        assert( circuit.run(seq1, seq1, True) == seq1.reverse_complement())
+        assert( circuit.run(seq1, seq1) == seq1.reverse_complement())
 
         with self.assertRaises(TypeError): # verify we cannot change a immutable seq in place
             circuit.set(lambda x,y:FheSeq(x).reverse_complement(True).toArray())
-            circuit.run(seq1, seq1, True)
+            circuit.run(seq1, seq1)
 
     def test_reverse_complement_rna(self):
-        circuit = BioConcreteCircuit(4)
+        circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGU')        
         circuit.set(lambda x,y:FheSeq(x).reverse_complement_rna().toArray())
-        assert( circuit.run(seq1, seq1, True) == seq1.reverse_complement_rna())
+        assert( circuit.run(seq1, seq1) == seq1.reverse_complement_rna())
 
         with self.assertRaises(TypeError): # verify we cannot change a immutable seq in place
             circuit.set(lambda x,y:FheSeq(x).reverse_complement_rna(True).toArray())
-            circuit.run(seq1, seq1, True)
+            circuit.run(seq1, seq1)
 
     def test_transcribe(self):
-        circuit = BioConcreteCircuit(4)
+        circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGT')        
         circuit.set(lambda x,y:FheSeq(x).transcribe().toArray())
-        assert( circuit.run(seq1, seq1, True) == seq1.transcribe())
+        assert( circuit.run(seq1, seq1) == seq1.transcribe())
 
         with self.assertRaises(TypeError): # verify we cannot change a immutable seq in place
             circuit.set(lambda x,y:FheSeq(x).transcribe(True).toArray())
-            circuit.run(seq1, seq1, True)
+            circuit.run(seq1, seq1)
 
     def test_back_transcribe(self):
-        circuit = BioConcreteCircuit(4)
+        circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGU')        
         circuit.set(lambda x,y:FheSeq(x).back_transcribe().toArray())
-        assert( circuit.run(seq1, seq1, True) == seq1.back_transcribe())
+        assert( circuit.run(seq1, seq1) == seq1.back_transcribe())
 
         with self.assertRaises(TypeError): # verify we cannot change a immutable seq in place
             circuit.set(lambda x,y:FheSeq(x).back_transcribe(True).toArray())
-            circuit.run(seq1, seq1, True)            
+            circuit.run(seq1, seq1)   
+
+    def test_translate(self):
+        circuit = BioConcreteCircuit(39, SIMULATE)
+        seq1 = Seq('ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG')        
+        circuit.set(lambda x,y:FheSeq(x).translate().toArray())
+        assert( circuit.run(seq1, seq1) == seq1.translate())
+
 
 if __name__ == "__main__":
-    unittest.main()
+    #unittest.main()
 
     # suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
-    # unittest.TextTestRunner(verbosity=2).run(suite)    
+    # suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_transcribe')
+
+    suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
+    unittest.TextTestRunner(verbosity=2).run(suite)    

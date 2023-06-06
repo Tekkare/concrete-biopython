@@ -2,14 +2,16 @@ from abc import ABC
 from concrete import fhe
 import numpy as np
 import numbers
+from .SeqWrapper import SeqWrapper
 
 
 class _SeqAbstractBaseClass(ABC):
 
-    _DNAcompelementTable = fhe.LookupTable([3, 2, 1, 0, 0]) # U is treated as a T
-    _RNAcompelementTable = fhe.LookupTable([4, 2, 1, 0, 0]) # T is treated as a U
-    _transcriptionTable = fhe.LookupTable([0, 1, 2, 4, 4]) # U does not change if any
-    _backTranscriptionTable = fhe.LookupTable([0, 1, 2, 3, 3]) # T does not change if any
+    _DNAcomplementTable = fhe.LookupTable(SeqWrapper.get_DNA_complementTable()) 
+    _RNAcomplementTable = fhe.LookupTable(SeqWrapper.get_RNA_complementTable()) 
+    _transcriptionTable = fhe.LookupTable(SeqWrapper.get_transcriptionTable()) 
+    _backTranscriptionTable = fhe.LookupTable(SeqWrapper.get_back_transcriptionTable())
+    _translationReductionTable = fhe.LookupTable(SeqWrapper.get_translationReductionTable())
 
     def __init__(self, data, length=None):
         if data is None:
@@ -38,47 +40,47 @@ class _SeqAbstractBaseClass(ABC):
         Sequences are equal to each other if their sequence contents is identical
         """
         if isinstance(other, _SeqAbstractBaseClass):
-            return self._data == other._data
+            return (len(self) - np.sum(self._data == other._data))==0
         elif isinstance(other, fhe.tracing.tracer.Tracer):
-            return self._data == other
+            return (len(self) - np.sum(self._data == other))==0
         else:
             return NotImplemented
 
-    def __lt__(self, other):
-        """Implement the less-than operand."""
-        if isinstance(other, _SeqAbstractBaseClass):
-            return self._data < other._data
-        elif isinstance(other, fhe.tracing.tracer.Tracer):
-            return self._data < other
-        else:
-            return NotImplemented
+    # def __lt__(self, other):
+    #     """Implement the less-than operand."""
+    #     if isinstance(other, _SeqAbstractBaseClass):
+    #         return self._data < other._data
+    #     elif isinstance(other, fhe.tracing.tracer.Tracer):
+    #         return self._data < other
+    #     else:
+    #         return NotImplemented
 
-    def __le__(self, other):
-        """Implement the less-than or equal operand."""
-        if isinstance(other, _SeqAbstractBaseClass):
-            return self._data <= other._data
-        elif isinstance(other, fhe.tracing.tracer.Tracer):
-            return self._data <= other
-        else:
-            return NotImplemented
+    # def __le__(self, other):
+    #     """Implement the less-than or equal operand."""
+    #     if isinstance(other, _SeqAbstractBaseClass):
+    #         return self._data <= other._data
+    #     elif isinstance(other, fhe.tracing.tracer.Tracer):
+    #         return self._data <= other
+    #     else:
+    #         return NotImplemented
 
-    def __gt__(self, other):
-        """Implement the greater-than operand."""
-        if isinstance(other, _SeqAbstractBaseClass):
-            return self._data > other._data
-        elif isinstance(other, fhe.tracing.tracer.Tracer):
-            return self._data > other
-        else:
-            return NotImplemented
+    # def __gt__(self, other):
+    #     """Implement the greater-than operand."""
+    #     if isinstance(other, _SeqAbstractBaseClass):
+    #         return self._data > other._data
+    #     elif isinstance(other, fhe.tracing.tracer.Tracer):
+    #         return self._data > other
+    #     else:
+    #         return NotImplemented
 
-    def __ge__(self, other):
-        """Implement the greater-than or equal operand."""
-        if isinstance(other, _SeqAbstractBaseClass):
-            return self._data >= other._data
-        elif isinstance(other, fhe.tracing.tracer.Tracer):
-            return self._data >= other  
-        else:
-            return NotImplemented
+    # def __ge__(self, other):
+    #     """Implement the greater-than or equal operand."""
+    #     if isinstance(other, _SeqAbstractBaseClass):
+    #         return self._data >= other._data
+    #     elif isinstance(other, fhe.tracing.tracer.Tracer):
+    #         return self._data >= other  
+    #     else:
+    #         return NotImplemented
 
     def __len__(self):
         """Return the length of the sequence."""
@@ -99,21 +101,22 @@ class _SeqAbstractBaseClass(ABC):
             # Return the (sub)sequence as another Seq/MutableSeq object
             return self.__class__(self._data[index])
 
-    # def __add__(self, other):
-    #     """Add a sequence or array to this sequence.
-    #     """
-    #     if isinstance(other, _SeqAbstractBaseClass):
-    #         return self.__class__(fhe.concatenate(self._data, other._data))
-    #     elif isinstance(other, fhe.tracing.tracer.Tracer):
-    #         return self.__class__(fhe.concatenate(self._data + other))
-    #     else:
-    #         return NotImplemented
+    def __add__(self, other):
+        """Add a sequence or array to this sequence.
+        """
+        if isinstance(other, _SeqAbstractBaseClass):
+            return self.__class__(np.concatenate((self._data, other._data), axis=0))
+        elif isinstance(other, fhe.tracing.tracer.Tracer):
+            return self.__class__(np.concatenate((self._data, other), axis=0))
+        else:
+            return NotImplemented
 
+    # Cannot be implemented, because it collides with array __add__ function            
     # def __radd__(self, other):
     #     """Add an array on the left.
     #     """
     #     if isinstance(other, fhe.tracing.tracer.Tracer):
-    #         return self.__class__(fhe.concatenate(other , self._data))
+    #         return self.__class__(fhe.concatenate((other , self._data), axis=0))
     #     else:
     #         return NotImplemented       
 
@@ -187,15 +190,16 @@ class _SeqAbstractBaseClass(ABC):
         """Return the complement as an RNA sequence.
 
         Any T in the sequence is treated as a U
+        Any other letter than ACGT will be changed to the character with index 0 which should not be done
 
         The sequence is modified in-place and returned if inplace is True
 
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        complement_seq = fhe.zeros(self._data.size)
-        for i in range(self._data.size):
-            complement_seq[i] = _SeqAbstractBaseClass._DNAcompelementTable[self._data[i]]
+        complement_seq = fhe.zeros(len(self))
+        for i in range(len(self)):
+            complement_seq[i] = _SeqAbstractBaseClass._DNAcomplementTable[self._data[i]]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -212,9 +216,9 @@ class _SeqAbstractBaseClass(ABC):
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        complement_seq = fhe.zeros(self._data.size)
-        for i in range(self._data.size):
-            complement_seq[i] = _SeqAbstractBaseClass._RNAcompelementTable[self._data[i]]
+        complement_seq = fhe.zeros(len(self))
+        for i in range(len(self)):
+            complement_seq[i] = _SeqAbstractBaseClass._RNAcomplementTable[self._data[i]]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -272,8 +276,8 @@ class _SeqAbstractBaseClass(ABC):
         T for Threonine with U for Selenocysteine, which has no
         biologically plausible rational.
         """
-        transcribed_seq = fhe.zeros(self._data.size)
-        for i in range(self._data.size):
+        transcribed_seq = fhe.zeros(len(self))
+        for i in range(len(self)):
             transcribed_seq[i] = _SeqAbstractBaseClass._transcriptionTable[self._data[i]]
         if inplace:
             if self.__class__ == FheSeq:
@@ -298,8 +302,8 @@ class _SeqAbstractBaseClass(ABC):
         Trying to back-transcribe a protein sequence will replace any U for
         Selenocysteine with T for Threonine, which is biologically meaningless.
         """
-        back_transcribed_seq = fhe.zeros(self._data.size)
-        for i in range(self._data.size):
+        back_transcribed_seq = fhe.zeros(len(self))
+        for i in range(len(self)):
             back_transcribed_seq[i] = _SeqAbstractBaseClass._backTranscriptionTable[self._data[i]]
         if inplace:
             if self.__class__ == FheSeq:
@@ -308,6 +312,42 @@ class _SeqAbstractBaseClass(ABC):
             return self
         else:
             return self.__class__(back_transcribed_seq)
+
+    def translate(self, table="Standard"):
+        """Turn a nucleotide sequence into a protein sequence by creating a new sequence object.
+
+        This method will translate DNA or RNA sequences. It should not
+        be used on protein sequences as any result will be biologically
+        meaningless.
+
+        Arguments:
+         - table - Which codon table to use?  This can be either a name
+           (string), or a fhe.LookupTable object (useful for non-standard genetic codes).
+           This defaults to the "Standard" table.
+        """
+        n = len(self)
+
+        if n % 3 != 0:
+            raise Error(
+                "Partial codon, len(sequence) not a multiple of three. "
+            )
+
+        translationTable = fhe.LookupTable(SeqWrapper.get_translationTable(table))
+
+        # first of all, reduce the integers of letters 'ACGU' (and T treated as a U) to 0,1,2,3
+        reduced_integers = fhe.zeros(len(self))
+        for i in range(len(self)):
+            reduced_integers[i] = _SeqAbstractBaseClass._translationReductionTable[self._data[i]]
+
+        protein_seq = fhe.zeros(n//3)
+
+        for i in range(n//3):
+            # compute codon index from first, second and third letters
+            codon_index = reduced_integers[i*3]*16 + reduced_integers[i*3+1]*4 + reduced_integers[i*3+2]
+            protein_seq[i] = translationTable[codon_index]
+
+        return self.__class__(protein_seq)
+
 
 class FheSeq(_SeqAbstractBaseClass):
 
@@ -321,7 +361,7 @@ class FheMutableSeq(_SeqAbstractBaseClass):
         super().__init__(data, length)
 
     def reverse(self):
-        s=self._data.size
+        s=len(self)
         reverse_seq = fhe.zeros(s)
         for i in range(s):
             reverse_seq[i] = self._data[s-i-1]
