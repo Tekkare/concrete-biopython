@@ -3,13 +3,16 @@ from Bio.Seq import Seq, MutableSeq
 
 
 class SeqWrapper():
+    """
+    A wrapper class to interface Concrete-BioPython with BioPython
+    """
 
     # create type letter related variables
     LETTERS = '*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(LETTERS)}
     INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(LETTERS)}
 
-    def __init__(self, data, length=None):
+    def __init__(self, data):
         """
         Arguments:
         - data: can be a BioPython Seq, MutableSeq, str, list or numpy array
@@ -44,9 +47,6 @@ class SeqWrapper():
     def toIntegers(self):
         # Map letters to integers
         return np.array([SeqWrapper.LETTERS_TO_INTEGERS[char] for char in self._data])
-
-    def getLetters():
-        return str(SeqWrapper.LETTERS)
 
     def _makeTable(letter_mapping):
         """
@@ -107,8 +107,13 @@ class SeqWrapper():
         Other letters are mapped to the integer 0, which should not be done
         """
         import itertools
+
+        # generate all possible codons in alphabetical order
         codons = [''.join(comb) for comb in itertools.product('ACGU', repeat=3)]
+
+        # translate the codons into a protein letter with BioPython Seq object
         codons_translated = [Seq(c).translate(table).__str__() for c in codons]
 
+        # return a table of the integer represntation of the protein letters
         return [SeqWrapper.LETTERS_TO_INTEGERS[letter] for letter in codons_translated]
 

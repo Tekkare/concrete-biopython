@@ -1,21 +1,22 @@
 import sys, os
 sys.path.append(os.getcwd())
 
-from ConcreteBioPython.FheSeq import FheSeq, FheMutableSeq
-from ConcreteBioPython.SeqWrapper import SeqWrapper
+from concreteBiopython.FheSeq import FheSeq, FheMutableSeq
+from concreteBiopython.SeqWrapper import SeqWrapper
 
 import unittest
 import numpy as np
 from Bio.Seq import Seq, MutableSeq
 from concrete import fhe
 
+
 class BioConcreteCircuit:
    
     def __init__(self, seq_length, simulate=False):
         self.seq_length=seq_length
         self.inputset=[
-            (np.random.randint(0, len(SeqWrapper.getLetters()), size=(seq_length,)),
-            np.random.randint(0, len(SeqWrapper.getLetters()), size=(seq_length,)))
+            (np.random.randint(0, len(SeqWrapper.LETTERS), size=(seq_length,)),
+            np.random.randint(0, len(SeqWrapper.LETTERS), size=(seq_length,)))
             for _ in range(100)
         ]
         self.circuit = None
@@ -52,7 +53,7 @@ class BioConcreteCircuit:
             return int_output
 
 
-SIMULATE=True
+SIMULATE=False
 
 class TestFheSeq(unittest.TestCase):
 
@@ -96,6 +97,31 @@ class TestFheSeq(unittest.TestCase):
         circuit.set( lambda x,y: (FheSeq(x)+FheSeq(y)).toArray() )
         assert( circuit.run(seq1, seq2) == (seq1+seq2) )
 
+    def test_startswith(self):
+        circuit = BioConcreteCircuit(4, SIMULATE)
+        seq1 = Seq('ACGT')        
+        seq2 = Seq('CGTA')
+        circuit.set(lambda x,y:FheSeq(x).startswith(FheSeq(y)[0:2]), True)
+        assert( circuit.run(seq1, seq1) )
+        assert( not circuit.run(seq1, seq2) )
+
+        # also test with naked array:
+        circuit.set(lambda x,y:FheSeq(x).startswith(FheSeq(y)[0:2].toArray()), True)
+        assert( circuit.run(seq1, seq1) )
+
+        # also test with start or end
+        circuit.set(lambda x,y:FheSeq(x).startswith(FheSeq(y)[0:2],1), True)
+        assert( circuit.run(seq1, seq2) )
+        circuit.set(lambda x,y:FheSeq(x).startswith(FheSeq(y)[0:2],None, 3), True)
+        assert( circuit.run(seq1, seq2) )   
+
+    def test_endswith(self):
+        circuit = BioConcreteCircuit(4, SIMULATE)
+        seq1 = Seq('ACGT')        
+        seq2 = Seq('CGTA')
+        circuit.set(lambda x,y:FheSeq(x).endswith(FheSeq(y)[1:3]), True)
+        assert( not circuit.run(seq1, seq1) )
+        assert( circuit.run(seq1, seq2) )
 
     def test_complement(self):
         circuit = BioConcreteCircuit(4, SIMULATE)
@@ -173,12 +199,23 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(lambda x,y:FheSeq(x).translate().toArray())
         assert( circuit.run(seq1, seq1) == seq1.translate())
 
+    # def test_join(self):
+    #     seq1 = Seq('ACG')
+    #     seq2 = Seq('TTT')
+    #     circuit = BioConcreteCircuit(3, SIMULATE)
+    #     circuit.set(lambda x,y:FheSeq(x).join(FheSeq(y)).toArray())
+    #     assert( circuit.run(seq2, seq1) == seq2.join(seq1))
 
-if __name__ == "__main__":
-    #unittest.main()
+import argparse
 
-    # suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
-    # suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_transcribe')
+parser = argparse.ArgumentParser()
+parser.add_argument('--sim', action='store_true', help='simulate encryption')
+args = parser.parse_args()
 
-    suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
-    unittest.TextTestRunner(verbosity=2).run(suite)    
+
+#SIMULATE = args.sim
+SIMULATE = True
+#unittest.main()
+
+suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_join')
+unittest.TextTestRunner(verbosity=2).run(suite)    
