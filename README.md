@@ -1,6 +1,6 @@
-# DNA Encryption and Analysis with TFHE / bioconcrete library
+# DNA Encryption and Analysis with TFHE / concrete-biopython library
 
-* **Overview:** This project aims to demonstrate the use of Zama Concrete library for FHE in bioinformatics, with an emphasis on DNA sequence encryption and analysis. The project will focus on creating simple BioPython DNA functions with FHE, conducting basic DNA analysis and treatment with FHE, and discussing the potential for implementing alignment algorithms with FHE.  The project's ultimate goal is to produce tooling that could serve as a foundation for a future "bioconcrete" TFHE-enabled BioPython library, while showcasing the potential of encrypted genomic data analysis while ensuring data privacy.
+* **Overview:** This project aims to demonstrate the use of Zama Concrete library for FHE in bioinformatics, with an emphasis on DNA sequence encryption and analysis. The project will focus on creating simple BioPython DNA functions with FHE, conducting basic DNA analysis and treatment with FHE, and discussing the potential for implementing alignment algorithms with FHE.  The project's ultimate goal is to produce tooling that could serve as a foundation for a future "concrete-biopython" TFHE-enabled BioPython library, while showcasing the potential of encrypted genomic data analysis while ensuring data privacy.
 * **Related links and reference:**:
   - [BioPython Library](https://biopython.org/)
   - [Smith-Waterman](https://en.wikipedia.org/wiki/Smith%E2%80%93Waterman_algorithm)
@@ -35,7 +35,7 @@
 
 ### 4. Documentation and Tutorial
 * **Tasks:**
-  * Provide a summary of all issues encountered with Concrete for improvement and potential path forward for bioconcrete.
+  * Provide a summary of all issues encountered with Concrete for improvement and potential path forward for concrete-biopython.
   * Create a comprehensive jupyter notebook detailing the project, methodologies, techniques, and results.
   * Provide clear explanations and code samples for developers to follow as a tutorial.
 * **Deliverables:** A jupyter notebook, including code snippets and visualizations, illustrating the application of FHE encryption using Concrete for DNA sequence analysis.
