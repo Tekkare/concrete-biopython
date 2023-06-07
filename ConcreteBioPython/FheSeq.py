@@ -10,14 +10,17 @@ class _FheSeqAbstractBaseClass(ABC):
     """
     The FHE version Bio.Seq._SeqAbstractBaseClass abstract class
 
-    _SeqAbstractBaseClass methods that cannot be implemented in fhe:
+    Methods from Bio.Seq._SeqAbstractBaseClass that cannot be implemented in fhe:
     split, rsplit, strip, lstrip, rstrip
 
 
+    Dev notes :
+    -----------
+    
     TODO:
 
     # Hard to implement in fhe (if doable):
-    __lt__ , __le__ , __gt__ , __ge__ , count , count_overlap , __contains__ , find , rfind , index , rindex, replace
+    __lt__ , __le__ , __gt__ , __ge__ , count, count_overlap , __contains__ , find , rfind , index , rindex, replace
 
     # Cannot be implemented, because it collides with array __add__ function:
     __radd__
@@ -31,6 +34,10 @@ class _FheSeqAbstractBaseClass(ABC):
 
     # If the class is extended to include undefined sequences:
     defined , defined_ranges
+
+
+    Possible optimization:
+    Child class FheBaseSeq that only encode DNA and RNA bases with integers in range 0..3, which will take only 2 bits for quicker processing
 
     """
 
