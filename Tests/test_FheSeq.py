@@ -1,13 +1,14 @@
 import sys, os
+
+import unittest
+import numpy as np
+from concrete import fhe
+from Bio.Seq import Seq, MutableSeq
+
 sys.path.append(os.getcwd())
 
 from concreteBiopython.FheSeq import FheSeq, FheMutableSeq
 from concreteBiopython.SeqWrapper import SeqWrapper
-
-import unittest
-import numpy as np
-from Bio.Seq import Seq, MutableSeq
-from concrete import fhe
 
 
 class BioConcreteCircuit:
@@ -18,8 +19,8 @@ class BioConcreteCircuit:
     def __init__(self, seq_length, simulate=False):
         self.seq_length=seq_length
         self.inputset=[
-            (np.random.randint(0, len(SeqWrapper.LETTERS), size=(seq_length,)),
-            np.random.randint(0, len(SeqWrapper.LETTERS), size=(seq_length,)))
+            (np.random.randint(0, SeqWrapper.maxInteger()+1, size=(seq_length,)),
+            np.random.randint(0, SeqWrapper.maxInteger()+1, size=(seq_length,)))
             for _ in range(100)
         ]
         self.circuit = None
@@ -112,7 +113,7 @@ class TestFheSeq(unittest.TestCase):
             return seq2.toArray()
         circuit.set( iter ) 
         assert( circuit.run(seq1, seq1) == seq2) 
-        
+
     def test_startswith(self):
         circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGT')        
@@ -128,7 +129,7 @@ class TestFheSeq(unittest.TestCase):
         # also test with start or end
         circuit.set(lambda x,y:FheSeq(x).startswith(FheSeq(y)[0:2],1), True)
         assert( circuit.run(seq1, seq2) )
-        circuit.set(lambda x,y:FheSeq(x).startswith(FheSeq(y)[0:2],None, 3), True)
+        circuit.set(lambda x,y:FheSeq(x).startswith(FheSeq(y)[3],None, 3), True)
         assert( circuit.run(seq1, seq2) )   
 
     def test_endswith(self):
@@ -325,16 +326,9 @@ class TestFheSeq(unittest.TestCase):
         assert( circuit.run(seq1, seq2) == seq1_bis)   
 
 
-import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--sim', action='store_true', help='simulate encryption')
-args = parser.parse_args()
-
-
-#SIMULATE = args.sim
 SIMULATE = True
-#unittest.main()
 
-suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_iter')
-unittest.TextTestRunner(verbosity=2).run(suite)    
+unittest.main()
+
+# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_startswith')
+# unittest.TextTestRunner(verbosity=2).run(suite)

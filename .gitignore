@@ -1,0 +1,5 @@
+*.DS_Store
+*.artifacts/
+*.keys/
+*.ipynb_checkpoints/
+*__pycache__/

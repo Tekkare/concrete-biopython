@@ -15,11 +15,11 @@ class SeqWrapper():
     def __init__(self, data):
         """
         Arguments:
-        - data: can be a BioPython Seq, MutableSeq, str, list or numpy array
+        - data: can be a BioPython Seq, MutableSeq, str or numpy array
         """
 
         # if data is an integer array, translate it to letters if needed
-        if isinstance(data, np.ndarray) or isinstance(data, list):
+        if isinstance(data, np.ndarray):
             valid_integers = set(SeqWrapper.INTEGERS_TO_LETTERS.keys())
             if not set(data).issubset(valid_integers):
                 raise ValueError("Invalid integers, must be in range 0:",len(SeqWrapper.LETTERS))
@@ -27,6 +27,12 @@ class SeqWrapper():
 
         elif isinstance(data, Seq) or isinstance(data, MutableSeq):
             data = data.__str__()
+
+        elif isinstance(data, str):
+            data = data
+
+        else:
+            raise ValueError('data must be either BioPython Seq, MutableSeq, str or numpy array')
 
         # Verify sequence letters
         valid_chars = set(SeqWrapper.LETTERS_TO_INTEGERS.keys())
@@ -47,6 +53,9 @@ class SeqWrapper():
     def toIntegers(self):
         # Map letters to integers
         return np.array([SeqWrapper.LETTERS_TO_INTEGERS[char] for char in self._data])
+
+    def maxInteger():
+        return len(SeqWrapper.LETTERS)-1
 
     def _makeTable(letter_mapping):
         """

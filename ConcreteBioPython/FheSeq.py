@@ -2,6 +2,7 @@ from abc import ABC
 from concrete import fhe
 import numpy as np
 import numbers
+
 from concreteBiopython.SeqWrapper import SeqWrapper
 
 
@@ -123,7 +124,7 @@ class _FheSeqAbstractBaseClass(ABC):
         elif start:
             return self[start:start+l] == prefix
         elif end:
-            return self[0:np.min(l,end)] == prefix
+            return self[0:np.min((l,end))] == prefix
         else:
             return self[0:l] == prefix
 
@@ -144,7 +145,7 @@ class _FheSeqAbstractBaseClass(ABC):
         if start and end:
             return self[start:end] == suffix
         elif start:
-            return self[np.max(start,len(self)-l):] == suffix
+            return self[np.max((start,len(self)-l)):] == suffix
         elif end:
             return self[end-l:end] == suffix
         else:
