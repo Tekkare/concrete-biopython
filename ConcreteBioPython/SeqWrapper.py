@@ -7,7 +7,7 @@ class SeqWrapper():
     A wrapper class to interface Concrete-BioPython with BioPython
     """
 
-    # create type letter related variables
+    # Create letters related variables (new letters can be added here in LETTERS, tables will adapt automatically)
     LETTERS = '*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(LETTERS)}
     INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(LETTERS)}
@@ -50,7 +50,7 @@ class SeqWrapper():
 
     def _makeTable(letter_mapping):
         """
-        Makes a integer mapping table from a letter mapping
+        Makes an integer mapping table from a letter mapping
         Absent letters are mapped to the index 0 which should not be done
         """
         integer_mapping = { SeqWrapper.LETTERS_TO_INTEGERS[letter]: SeqWrapper.LETTERS_TO_INTEGERS[letter_mapping[letter]] for letter in letter_mapping.keys() }
@@ -58,7 +58,7 @@ class SeqWrapper():
 
     def get_DNA_complementTable():
         """
-        Computes an integer table to map DNA letters as integers to their complement letter as integer
+        Computes an integer table to map DNA letters (as integers) to their complement letter (as integer)
         Any U is treated like a T
         Other letters are mapped to the integer 0, which should not be done
         """
@@ -66,7 +66,7 @@ class SeqWrapper():
 
     def get_RNA_complementTable():
         """
-        Computes an integer table to map RNA letters as integers to their complement letter as integer
+        Computes an integer table to map RNA letters (as integers) to their complement letter (as integer)
         Any T is treated like a U
         Other letters are mapped to the integer 0, which should not be done
         """
@@ -74,7 +74,7 @@ class SeqWrapper():
 
     def get_transcriptionTable():
         """
-        Computes an integer table to map DNA letters as integers to their transcribed RNA letter as integer
+        Computes an integer table to map DNA letters (as integers) to their transcribed RNA letter (as integer)
         Only T is changed to U, ACG are unchanged
         Any U is treated like a T
         Other letters are mapped to the integer 0, which should not be done
@@ -83,7 +83,7 @@ class SeqWrapper():
 
     def get_back_transcriptionTable():
         """
-        Computes an integer table to map RNA letters as integers to their transcribed DNA letter as integer
+        Computes an integer table to map RNA letters (as integers) to their transcribed DNA letter (as integer)
         Only U is changed to T, ACG are unchanged
         Any T is treated like a U
         Other letters are mapped to the integer 0, which should not be done
@@ -92,7 +92,7 @@ class SeqWrapper():
 
     def get_translationReductionTable():
         """
-        Computes a table to map the integer version of RNA letters 'ACGU' to intgers in 0..3
+        Computes a table to map the integer version of RNA letters 'ACGU' to integers in 0..3
             which is required to process codons (groups of letters)
         Letter T is treated like a U
         Other letters would be mapped to 0, which should not be done
@@ -101,7 +101,7 @@ class SeqWrapper():
 
     def get_translationTable(table="Standard"):
         """
-        Computes a table to map RNA letters as integers in 0..3 to their translated protein letter as integer
+        Computes a table to map RNA letters (as integers) in 0..3 to their translated protein letter (as integer)
         This default table corresponds to the standard translation table of DNA
         Any T is treated like a U
         Other letters are mapped to the integer 0, which should not be done

@@ -8,6 +8,29 @@ from concreteBiopython.SeqWrapper import SeqWrapper
 class _FheSeqAbstractBaseClass(ABC):
     """
     The FHE version Bio.Seq._SeqAbstractBaseClass abstract class
+
+    _SeqAbstractBaseClass methods that cannot be implemented in fhe:
+    split, rsplit, strip, lstrip, rstrip
+
+
+    TODO:
+
+    # Hard to implement in fhe (if doable):
+    __lt__ , __le__ , __gt__ , __ge__ , count , count_overlap , __contains__ , find , rfind , index , rindex, replace
+
+    # Cannot be implemented, because it collides with array __add__ function:
+    __radd__
+
+    # Require compatible implementaion of numpy.repeat for concrete
+    __mul__ , __rmul__ , __imul__
+
+    # Unused for now because all characters are uppercase ( this lowers the letter variable to 5 bits only)
+    #   but lower case characters could easily be added to SeqWrapper.LETTERS
+    upper , lower , isupper , islower
+
+    # If the class is extended to include undefined sequences:
+    defined , defined_ranges
+
     """
 
     _DNAcomplementTable = fhe.LookupTable(SeqWrapper.get_DNA_complementTable()) 
@@ -25,9 +48,13 @@ class _FheSeqAbstractBaseClass(ABC):
             elif length < 0:
                 raise ValueError("length must not be negative.")
             else:
-                self._data = _UndefinedSequenceData(length)
+                #self._data = _UndefinedSequenceData(length)
+                raise NotImplemented
         elif isinstance(data, fhe.tracing.tracer.Tracer):
-            self._data = data
+            if data.size>1:
+                self._data = data
+            else:
+                self._data = data.reshape(1)
         else:
             print(type(data))
             raise TypeError(
@@ -49,20 +76,13 @@ class _FheSeqAbstractBaseClass(ABC):
         else:
             return NotImplemented
 
-    ## TODO (Hard to do)
-    # def __lt__(self, other):
-    # def __le__(self, other):
-    # def __gt__(self, other):
-    # def __ge__(self, other):
-
     def __len__(self):
         """Return the length of the sequence."""
         return self._data.size
 
-    ## Require concrete implementation of tracer.__iter__ 
-    # def __iter__(self):
-    #     """Return an iterable of the sequence."""
-    #     return self._data.__iter__()
+    def __iter__(self):
+        """Return an iterable of the sequence."""
+        return iter(self._data)
 
     def __getitem__(self, index):
         """Return a subsequence as a single integer or as a sequence object.
@@ -83,26 +103,6 @@ class _FheSeqAbstractBaseClass(ABC):
             return self.__class__(np.concatenate((self._data, other), axis=0))
         else:
             return NotImplemented
-
-    ## Cannot be implemented, because it collides with array __add__ function            
-    # def __radd__(self, other):
-
-    # TODO:
-
-    ## Require compatible implementaion of numpy.repeat for concrete
-    # def __mul__(self, other):
-    # def __rmul__(self, other):
-    # def __imul__(self, other):
-
-    ## Hard to do
-    # def count(self, sub, start=None, end=None):
-    # def count_overlap(self, sub, start=None, end=None):
-    # def __contains__(self, item):
-    # def find(self, sub, start=None, end=None):
-    # def rfind(self, sub, start=None, end=None):
-    # def index(self, sub, start=None, end=None):
-    # def rindex(self, sub, start=None, end=None):
-
 
     def startswith(self, prefix, start=None, end=None):
         """Return True if data starts with the specified prefix, False otherwise.
@@ -149,19 +149,6 @@ class _FheSeqAbstractBaseClass(ABC):
             return self[end-l:end] == suffix
         else:
             return self[len(self)-l:] == suffix
-
-    ## Cannot be done in fhe:
-    # def split(self, sep=None, maxsplit=-1):
-    # def rsplit(self, sep=None, maxsplit=-1):
-    # def strip(self, chars=None, inplace=False):
-    # def lstrip(self, chars=None, inplace=False):
-    # def rstrip(self, chars=None, inplace=False):
-
-    ## For now all characters are uppercase so that letters can be coded in only 5 bits
-    # def upper(self, inplace=False):
-    # def lower(self, inplace=False):
-    # def isupper(self):
-    # def islower(self):  
 
     def translate(self, table="Standard"):
         """Turn a nucleotide sequence into a protein sequence by creating a new sequence object.
@@ -326,44 +313,37 @@ class _FheSeqAbstractBaseClass(ABC):
         else:
             return self.__class__(back_transcribed_seq)
 
-    # TODO
+    def join(self, other):
+        """Return a merge of the sequences in other, spaced by the sequence from self.
 
-    # def join(self, other):
-    #     """Return a merge of the sequences in other, spaced by the sequence from self.
+        Accepts a FheSeq object, FheMutableSeq object, or array (and iterates over
+        the integers), or an iterable containing Seq, MutableSeq, or string
+        objects. These arguments will be concatenated with the calling sequence
+        as the spacer:
+        """
+        joindata = []
+        if isinstance(other, _FheSeqAbstractBaseClass):
+            for i in range(len(other)):
+                joindata.append(other[i].reshape(1))
+        elif isinstance(other, fhe.tracing.tracer.Tracer):
+            for i in range(other.size):
+                joindata.append(other[i].reshape(1))
+        elif isinstance(other, list) or isinstance(other, tuple):
+            for data in other:
+                if isinstance(data, _FheSeqAbstractBaseClass):
+                    joindata.append(data.toArray())
+                elif isinstance(data, fhe.tracing.tracer.Tracer):
+                    joindata.append(data)
+                else:
+                    raise NotImplemented
+        else:
+            NotImplemented
 
-    #     Accepts a FheSeq object, FheMutableSeq object, or array (and iterates over
-    #     the integers), or an iterable containing Seq, MutableSeq, or string
-    #     objects. These arguments will be concatenated with the calling sequence
-    #     as the spacer:
-    #     """
-    #     if isinstance(other, _FheSeqAbstractBaseClass):
-    #         joindata = [ i for i in other.toArray()]
-    #     elif isinstance(other, fhe.tracing.tracer.Tracer):
-    #         joindata = [i for i in other]
-    #     elif isinstance(other, list) or isinstance(other, tuple):
-    #         joindata = []
-    #         for data in other:
-    #             if isinstance(other, _FheSeqAbstractBaseClass):
-    #                 joindata.append[other.toArray()]
-    #             elif isinstance(other, fhe.tracing.tracer.Tracer):
-    #                 joindata.append[other]
-    #             else:
-    #                 raise NotImplemented
-    #     else:
-    #         NotImplemented
+        concatenation = joindata[0]
+        for i in range(1,len(joindata)):
+            concatenation = np.concatenate((concatenation,self._data,joindata[i]),axis=0)
 
-    #     concatenation = joindata[0]
-    #     for i in range(1,len(joindata)):
-    #         concatenation = np.concatenate((concatenation,self._data,joindata[i]),axis=0)
-
-    #     return self.__class__(concatenation)
-
-    ## very hard to do if not undoable in fhe
-    # def replace(self, old, new, inplace=False):
-
-    ## TODO
-    # def defined(self):
-    # def defined_ranges(self):
+        return self.__class__(concatenation)
 
 
 class FheSeq(_FheSeqAbstractBaseClass):
@@ -380,6 +360,8 @@ class FheSeq(_FheSeqAbstractBaseClass):
 class FheMutableSeq(_FheSeqAbstractBaseClass):
     """
     The FHE version Bio.Seq.MutableSeq class
+
+    remove(self, item) is absent because it cannot be done in fhe
     """
     def __init__(self, data, length=None):
         super().__init__(data, length)
@@ -391,11 +373,69 @@ class FheMutableSeq(_FheSeqAbstractBaseClass):
             reverse_seq[i] = self._data[s-i-1]
         self._data = reverse_seq
 
-    # TODO
-    # def __setitem__(self, index, value):
-    # def __delitem__(self, index):
-    # def append(self, c):
-    # def insert(self, i, c):
-    # def pop(self, i=(-1)):
-    # def remove(self, item):
-    # def extend(self, other):
+    def __setitem__(self, index, value):
+        """Set a subsequence of single letter via value parameter.
+        """
+        if isinstance(index, numbers.Integral):
+            # Replacing a single letter with a new string
+            self._data[index] = value
+        else:
+            # Replacing a sub-sequence
+            if isinstance(value, _FheSeqAbstractBaseClass):
+                self._data[index] = value._data
+            elif isinstance(value, fhe.tracing.tracer.Tracer):
+                self._data[index] = value
+            else:
+                raise TypeError(f"received unexpected type '{type(value).__name__}'")
+
+    def __delitem__(self, index):
+        """Delete a subsequence of single letter.
+        """
+        if isinstance(index, numbers.Integral):
+            # Replacing a single letter with a new string
+            if(index > 0 or index <-1):
+                self._data = (self[0:index]+self[index+1:])._data
+            elif index==0:
+                self._data = self[1:]._data
+            else: #-1
+                self._data = self[0:index]._data
+        else:
+            self._data = (self[0:index.start]+self[index.stop:])._data
+
+    def append(self, c):
+        """Add a single letter to the mutable sequence object.
+        No return value.
+        """
+        if not isinstance(c, fhe.tracing.tracer.Tracer):
+            raise TypeError('c must be of type fhe.tracing.tracer.Tracer')
+        if c.size > 1:
+            raise ValueError('c must be of size 1')
+        self._data = (self+c.reshape(1))._data
+
+    def insert(self, i, c):
+        """Add a single letter to the mutable sequence object at a given index.
+        No return value.
+        """
+        if not isinstance(c, fhe.tracing.tracer.Tracer):
+            raise TypeError('c must be of type fhe.tracing.tracer.Tracer')
+        if c.size > 1:
+            raise ValueError('c must be of size 1')
+        self._data = (self[0:i]+c.reshape(1)+self[i:])._data
+
+    def pop(self, i=-1):
+        """Remove a subsequence of a single letter at given index.
+        Returns the last character of the sequence.
+        """
+        c = self._data[i]
+        self.__delitem__(i)
+        return c
+    
+    def extend(self, other):
+        """Add a sequence to the original mutable sequence object.
+        No return value.
+        """
+        if isinstance(other, _FheSeqAbstractBaseClass) or isinstance(other,fhe.tracing.tracer.Tracer):
+            self._data = (self+other)._data
+        else:
+            raise TypeError("expected a string, Seq or MutableSeq")
+

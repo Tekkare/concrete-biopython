@@ -12,6 +12,9 @@ from concrete import fhe
 
 class BioConcreteCircuit:
    
+    """
+    Circuit factory class for testing FheSeq on 2 sequences input
+    """
     def __init__(self, seq_length, simulate=False):
         self.seq_length=seq_length
         self.inputset=[
@@ -69,8 +72,7 @@ class TestFheSeq(unittest.TestCase):
         assert( not circuit.run(seq1, seq3))
 
         # # < operands
-        # circuit.set(lambda x,y: FheSeq(x)<FheSeq(y) , True)
-        # assert( np.all(circuit.run(seq1, seq2) == np.array([True, True, True, True, False])) )  
+        # TODO
 
         # len operand
         circuit.set( lambda x,y: fhe.ones(1) if len(FheSeq(x))==5 else fhe.zeros(1), True )
@@ -97,6 +99,20 @@ class TestFheSeq(unittest.TestCase):
         circuit.set( lambda x,y: (FheSeq(x)+FheSeq(y)).toArray() )
         assert( circuit.run(seq1, seq2) == (seq1+seq2) )
 
+    def test_iter(self):
+        seq1 = Seq('ACGT')
+        seq2 = Seq('AACGT')
+        circuit = BioConcreteCircuit(4, SIMULATE)
+       
+        def iter(x,y):
+            seq=FheSeq(x)
+            seq2=FheMutableSeq(seq[0])
+            for c in seq:
+                seq2.append(c)
+            return seq2.toArray()
+        circuit.set( iter ) 
+        assert( circuit.run(seq1, seq1) == seq2) 
+        
     def test_startswith(self):
         circuit = BioConcreteCircuit(4, SIMULATE)
         seq1 = Seq('ACGT')        
@@ -199,12 +215,115 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(lambda x,y:FheSeq(x).translate().toArray())
         assert( circuit.run(seq1, seq1) == seq1.translate())
 
-    # def test_join(self):
-    #     seq1 = Seq('ACG')
-    #     seq2 = Seq('TTT')
-    #     circuit = BioConcreteCircuit(3, SIMULATE)
-    #     circuit.set(lambda x,y:FheSeq(x).join(FheSeq(y)).toArray())
-    #     assert( circuit.run(seq2, seq1) == seq2.join(seq1))
+    def test_join(self):
+        seq1 = Seq('ACG')
+        seq2 = Seq('TTT')
+        circuit = BioConcreteCircuit(3, SIMULATE)
+       
+        # test joining a FheSeq
+        circuit.set(lambda x,y:FheSeq(x).join(FheSeq(y)).toArray())
+        assert( circuit.run(seq2, seq1) == seq2.join(seq1))
+        
+        # test joining an array
+        circuit.set(lambda x,y:FheSeq(x).join(y).toArray())
+        assert( circuit.run(seq2, seq1) == seq2.join(seq1))
+        
+        # test joining a sequence of FheSeq and arrays
+        circuit.set(lambda x,y:FheSeq(x).join([FheSeq(x),x,y]).toArray())
+        assert( circuit.run(seq2, seq1) == seq2.join([seq2,seq2,seq1]))   
+
+    def test_setitem(self):
+        seq1 = Seq('XXXXXXXX')
+        seq2 = Seq('ABCDEFGH')
+        circuit = BioConcreteCircuit(8, SIMULATE)
+       
+        def setitem(x,y):
+            seq=FheMutableSeq(x)
+            seq[0]=y[0]
+            seq[2:4]=y[2:4]
+            seq[5:]=FheSeq(y[5:])
+            return seq.toArray()
+        circuit.set( setitem )
+        assert( circuit.run(seq1, seq2) == Seq('AXCDXFGH'))
+
+    def test_delitem(self):
+        seq1 = Seq('ABCDEFGH')
+        seq2 = MutableSeq('ABCDEFGH')
+        circuit = BioConcreteCircuit(8, SIMULATE)
+       
+        def delitem(x,y):
+            seq=FheMutableSeq(x)
+            del seq[0]
+            del seq[2]
+            del seq[2:4]
+            return seq.toArray()
+        circuit.set( delitem )
+        del seq2[0]
+        del seq2[2]
+        del seq2[2:4]
+        assert( circuit.run(seq1, seq1) == seq2)
+
+    def test_append(self):
+        seq1 = Seq('AC')
+        seq1_bis = MutableSeq('AC')
+        seq2 = MutableSeq('GT')
+        circuit = BioConcreteCircuit(2, SIMULATE)
+       
+        def append(x,y):
+            seq=FheMutableSeq(x)
+            seq2=FheMutableSeq(y)
+            seq.append(seq2[0])
+            return seq.toArray()
+        circuit.set( append ) 
+        seq1_bis.append(seq2[0])
+        assert( circuit.run(seq1, seq2) == seq1_bis)  
+
+    def test_insert(self):
+        seq1 = Seq('AC')
+        seq1_bis = MutableSeq('AC')
+        seq2 = MutableSeq('GT')
+        circuit = BioConcreteCircuit(2, SIMULATE)
+       
+        def insert(x,y):
+            seq=FheMutableSeq(x)
+            seq2=FheMutableSeq(y)
+            seq.insert(1,seq2[0])
+            return seq.toArray()
+        circuit.set( insert ) 
+        seq1_bis.insert(1,seq2[0])
+        assert( circuit.run(seq1, seq2) == seq1_bis)  
+
+    def test_pop(self):
+        seq1 = Seq('ACGT')
+        seq1_bis = MutableSeq('ACGT')
+        circuit = BioConcreteCircuit(4, SIMULATE)
+       
+        def pop(x,y):
+            seq=FheMutableSeq(x)
+            seq.pop()
+            seq.pop(1)
+            return seq.toArray()
+        circuit.set( pop ) 
+        seq1_bis.pop()
+        seq1_bis.pop(1)
+        assert( circuit.run(seq1, seq1) == seq1_bis)  
+
+    def test_extend(self):
+        seq1 = Seq('AC')
+        seq1_bis = MutableSeq('AC')
+        seq2 = MutableSeq('GT')
+        circuit = BioConcreteCircuit(2, SIMULATE)
+       
+        def extend(x,y):
+            seq=FheMutableSeq(x)
+            seq.extend(y)
+            seq.extend(FheSeq(y))
+            return seq.toArray()
+        circuit.set( extend ) 
+        seq1_bis.extend(seq2)
+        seq1_bis.extend(seq2)
+        assert( circuit.run(seq1, seq2) == seq1_bis)   
+
 
 import argparse
 
@@ -217,5 +336,5 @@ args = parser.parse_args()
 SIMULATE = True
 #unittest.main()
 
-suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_join')
+suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_iter')
 unittest.TextTestRunner(verbosity=2).run(suite)    
