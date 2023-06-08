@@ -357,19 +357,24 @@ class _FheSeqAbstractBaseClass(ABC):
 class FheSeq(_FheSeqAbstractBaseClass):
     """
     The FHE version Bio.Seq.Seq class
+
+    Dev notes:
+    ----------
+    
+    TODO:
+
+    __hash__
+
     """
     def __init__(self, data, length=None):
         super().__init__(data, length)
-
-    # TODO
-    #def __hash__(self):
 
 
 class FheMutableSeq(_FheSeqAbstractBaseClass):
     """
     The FHE version Bio.Seq.MutableSeq class
 
-    remove(self, item) is absent because it cannot be done in fhe
+    This method from Bio.Seq.FheMutableSeq that cannot be implemented in fhe: remove
     """
     def __init__(self, data, length=None):
         super().__init__(data, length)
