@@ -3,7 +3,7 @@ from concrete import fhe
 import numpy as np
 import numbers
 
-from concreteBiopython.SeqWrapper import SeqWrapper
+from SeqWrapper import SeqWrapper
 
 
 class _FheSeqAbstractBaseClass(ABC):
