@@ -7,8 +7,8 @@ from Bio.Seq import Seq, MutableSeq
 
 sys.path.append(os.getcwd())
 
-from concreteBiopython.FheSeq import FheSeq, FheMutableSeq
-from concreteBiopython.SeqWrapper import SeqWrapper
+from ConcreteBiopython.FheSeq import FheSeq, FheMutableSeq
+from ConcreteBiopython.SeqWrapper import SeqWrapper
 
 
 class BioConcreteCircuit:

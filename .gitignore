@@ -2,4 +2,5 @@
 *.artifacts/
 *.keys/
 *.ipynb_checkpoints/
-*__pycache__/
+*__pycache__
+/tutorial/tutorial-content/
