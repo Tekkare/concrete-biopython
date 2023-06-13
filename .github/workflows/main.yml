@@ -1,0 +1,184 @@
+# Real Consulting Data CI.
+name: CI
+env:
+  REDSHIFT_PASSWORD: ${{ secrets.redshift_password }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.snowflake_password }}
+  ELASTICSEARCH_PASSWORD: ${{ secrets.elasticsearch_password }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key }}
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+#  pull_request:
+#    types: [ closed ]
+#    branches: [ main ]
+  push:
+    branches:
+      # - develop
+      - main
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  ci:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Check-out repository
+        uses: actions/checkout@v3
+
+      - run: echo "::set-output name=PACKAGE_VERSION::$(cat pyproject.toml | grep version | head -1 | awk -F'"' '{ print $2 }')"
+        id: package_version
+
+      # - name: Set .env file containing the non-secret values
+      #   run: mv .env.ci .env
+
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install package
+        run: poetry install
+
+      - name: Coverage Test | A summary of how much our pytest covers
+        run: poetry run pytest -v tests/
+
+  cd:
+    # This condition is important, but it should be triggered only when the PR is merged into main.
+    # If it's in the develop branch, it should trigger only the ci job.
+    # if: (github.event.pull_request.merged == true) && (github.ref == 'refs/heads/main') # Only run this job if new work is pushed to "main"
+    if: github.ref == 'refs/heads/main' # Only run this job if new work is pushed to "main"
+    needs: ci # Only run this job if the "ci" job passes
+
+    # Set up operating system
+    runs-on: ubuntu-latest
+
+    # Define job steps
+    steps:
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Check-out repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - run: echo "::set-output name=PACKAGE_VERSION::$(cat pyproject.toml | grep version | head -1 | awk -F'"' '{ print $2 }')"
+        id: package_version
+
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install package
+        run: poetry install
+
+      - name: Building rcd-dev-kit Package
+        run: poetry build
+
+      # - name: Build Documentation
+      #   run: poetry run make html --directory docs/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Test install from PyPI
+        run: pip install concrete_biopython
+
+      # - name: Uploading html doc into S3 bucket
+      #   uses: jakejarvis/s3-sync-action@master
+      #   with:
+      #     args: --acl public-read --follow-symlinks --delete
+      #   env:
+      #     AWS_S3_BUCKET: 'concrete-biopython-documentation'
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     AWS_REGION: 'eu-west-3'   # Optional: defaults to us-east-1
+      #     SOURCE_DIR: 'docs/_build'      # Optional: defaults to entire repository
+
+      - uses: actions/checkout@v2
+      - name: Tag and push current repo code
+        run: |
+          git tag v${{steps.package_version.outputs.PACKAGE_VERSION}}
+          git push origin v${{steps.package_version.outputs.PACKAGE_VERSION}}
+
+  # ### TO UNCOMMENT THIS PART IF YOU WANT TO SEND A TEAMS MESSAGE
+  # notification:
+  #   name: Teams Notification
+  #   runs-on: ubuntu-latest
+  #   needs: cd
+  #   steps:
+  #     - name: Set up Python 3.9
+  #       uses: actions/setup-python@v2
+  #       with:
+  #         python-version: 3.9
+
+  #     - name: Check-out repository
+  #       uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: Set outputs
+  #       id: vars
+  #       run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+  #     - name: Check outputs
+  #       run: echo ${{ steps.vars.outputs.sha_short }}
+
+  #     - run: echo "::set-output name=PACKAGE_VERSION::$(cat pyproject.toml | grep version | head -1 | awk -F'"' '{ print $2 }')"
+  #       id: package_version
+
+  #     - uses: actions-ecosystem/action-regex-match@v2
+  #       id: regex_match
+  #       with:
+  #         text: v${{steps.package_version.outputs.PACKAGE_VERSION}}
+  #         regex: '^v\d+\.\d+\.\d+$'
+
+  #     # Wait for Cloud Build to finish pushing new rcd-dev-kit docker image
+  #     - name: Sleep for 3 min.
+  #       run: sleep 3m
+  #       shell: bash
+
+  #     - name: Get current date  # ${{ steps.date.outputs.date }}
+  #       id: date
+  #       run: echo "::set-output name=date::$(date +'%Y-%m-%d, %H:%M:%S')"
+
+  #     - name: 📣 Send teams notification
+  #       uses: simbo/msteams-message-card-action@latest
+  #       if: ${{ steps.regex_match.outputs.match != '' }}
+  #       with:
+  #         webhook: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
+  #         title: "concrete-biopython | New version released!"
+  #         message: <p>A <strong>new version</strong> of rcd-dev-kid has just been released!</p>
+  #         color: ff69b4
+  #         buttons: |
+  #           Check Documentation https://rcd-dev-kit-documentation.s3.eu-west-3.amazonaws.com/html/index.html
+  #           Check Repo https://github.com/OpenInnovationProgram/rcd-dev-kit
+  #           Check Container Registry https://console.cloud.google.com/gcr/images/oip-cluster/eu/realconsultingdata/python/rcd-dev-kit?hl=fr&project=oip-cluster
+  #           Check Changelog https://github.com/OpenInnovationProgram/rcd-dev-kit/blob/main/CHANGELOG.md
+  #         sections: |
+  #           -
+  #             activityTitle: Github CICD
+  #             activitySubtitle: ${{ steps.date.outputs.date }}
+  #             activityImage: https://avatars.githubusercontent.com/u/102799750?s=200&v=4
+  #             facts:
+  #               -
+  #                 name: "Version:"
+  #                 value: v${{steps.package_version.outputs.PACKAGE_VERSION}}
+  #               -
+  #                 name: "Docker Image:"
+  #                 value: docker pull eu.gcr.io/oip-cluster/realconsultingdata/python/rcd-dev-kit:v${{steps.package_version.outputs.PACKAGE_VERSION}}
+  #             text: A new version of rcd-dev-kit has just been release by the CICD. The docker image takes a few minutes to finish building and being pushed. Test if you can already pull it, if not, in a few minutes the new docker image will be available.
