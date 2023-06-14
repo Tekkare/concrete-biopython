@@ -7,8 +7,7 @@
 - `FheSeq` class following `Bio.Seq`
 - `FheMutableSeq` class following `Bio.MutableSeq`
 - `SeqWrapper` class interfacing `Bio.Seq`
- with `FheSeq`, and vice versa.
-
+  with `FheSeq`, and vice versa.
 
 ## Installation
 
@@ -17,7 +16,7 @@
 Use poetry to install dependencies in a local virtual environment:
 
 ```
-poetry intsall
+poetry install
 ```
 
 #### Set up the kernel for the jupyter tutorial
@@ -40,16 +39,17 @@ python -m ipykernel install --user --name=concrete-biopython
 
 Please refer to the tutorial in `tutorial/tutorial.ipynb` for usage explanations.
 
-
 **Note**: `FheSeq` objects are created from integer arrays within a FHE circuit. They work on encrypted arrays in the same way `Bio.Seq` objects work on clear string sequences.  
-In your app, in order to go from a `Bio.Seq` object to a `FheSeq` object and vice versa, you need to use the interfacing class `SeqWrapper` as explained in the tutorial.  
+In your app, in order to go from a `Bio.Seq` object to a `FheSeq` object and vice versa, you need to use the interfacing class `SeqWrapper` as explained in the tutorial.
 
 To run an app `./my_app.py`, use:
 
 ```
 poetry run python tests/my_app.py
 ```
+
 or
+
 ```
 poetry shell
 python tests/my_app.py
@@ -62,7 +62,9 @@ For testing:
 ```
 poetry run python tests/test_FheSeq.py
 ```
+
 or
+
 ```
 poetry shell
 python tests/test_FheSeq.py
