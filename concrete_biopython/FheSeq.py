@@ -20,12 +20,12 @@ class _FheSeqAbstractBaseClass(ABC):
     TODO:
 
     # Hard to implement in fhe (if doable):
-    __lt__ , __le__ , __gt__ , __ge__ , count, count_overlap , __contains__ , find , rfind , index , rindex, replace
+    count, count_overlap , __contains__ , find , rfind , index , rindex, replace
 
     # Cannot be implemented, because it collides with array __add__ function:
     __radd__
 
-    # Require compatible implementaion of numpy.repeat for concrete
+    # Require compatible implementaion of numpy.repeat for concrete to be done properly
     __mul__ , __rmul__ , __imul__
 
     # Unused for now because all characters are uppercase ( this lowers the letter variable to 5 bits only)
@@ -84,14 +84,39 @@ class _FheSeqAbstractBaseClass(ABC):
         else:
             return NotImplemented
 
-    # def __lt__(self, other):
-    #     return bytes(self) < other
 
-    # def __le__(self, other):
-    #     return bytes(self) <= other
+    def __lt__(self, other):
+        """ Computes wether a sequence is lower than another, in alphabetical order
 
-    # def __gt__(self, other):
-    #     return bytes(self) > other
+        A sequence A is lower than a sequence B if and only if:
+        there exist an index i such that: A[i] < B[i]  AND  for all k<i, A[i] <= B[i]
+
+        This is the mathematical converse of A >= B (see self.__ge__) which is easier to do in fhe
+
+        If sequence have different length, the shorter one is considered to have extra empty characters
+        where the empty character is the lowest in alphabetical order
+        """
+        return 1-(self >= other)
+
+    def __le__(self, other):
+        """ Computes wether a sequence is lower or equal than another, in alphabetical order
+
+        The proposition "A <= B" is equivalent to "B >= A" (see self.__ge__)
+
+        If sequence have different length, the shorter one is considered to have extra empty characters
+        where the empty character is the lowest in alphabetical order
+        """       
+        return other >= self
+
+    def __gt__(self, other):
+        """ Computes wether a sequence is greater than another, in alphabetical order
+
+        The proposition "A > B" is the mathematical converse of "B >= A" (see self.__ge__)
+
+        If sequence have different length, the shorter one is considered to have extra empty characters
+        where the empty character is the lowest in alphabetical order
+        """
+        return 1-(other >= self)
 
     def __ge__(self, other):
         """ Computes wether a sequence is greater or equal than another, in alphabetical order

@@ -67,12 +67,12 @@ class TestFheSeq(unittest.TestCase):
         seq2 = Seq('CGTUA')        
         seq3 = Seq('ACGTA')        
 
-        # == operands
+        ## == operand
         circuit.set(lambda x,y: FheSeq(x)==FheSeq(y) , True)
         assert( circuit.run(seq1, seq1) )
         assert( not circuit.run(seq1, seq3))
 
-        # >= operands
+        ## >= operand
         circuit.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
 
         # close sequences:
@@ -92,11 +92,57 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(lambda x,y: FheSeq(x)[0:4]>=FheSeq(y) , True)        
         assert( not circuit.run(seq4, seq4) )
 
-        # len operand
+
+        ## <= operand
+        circuit.set(lambda x,y: FheSeq(x)<=FheSeq(y) , True)
+
+        # close sequences:
+        assert( circuit.run(seq3, seq1) )        
+        assert( not circuit.run(seq1, seq3) )
+
+        assert( circuit.run(seq3, seq2) )        
+        assert( not circuit.run(seq2, seq3) )
+
+        # identical sequences
+        assert( circuit.run(seq1, seq1) )
+
+        # sequences with different sizes:
+        seq4 = Seq('AAAAA')
+        circuit.set(lambda x,y: FheSeq(x)<=FheSeq(y)[0:4] , True)        
+        assert( not circuit.run(seq4, seq4) )
+        circuit.set(lambda x,y: FheSeq(x)[0:4]<=FheSeq(y) , True)        
+        assert( circuit.run(seq4, seq4) )
+
+
+        ## > operand
+        circuit.set(lambda x,y: FheSeq(x)>FheSeq(y) , True)
+
+        # close sequences:
+        assert( circuit.run(seq1, seq3) )        
+        # identical sequences
+        assert( not circuit.run(seq1, seq1) )
+        # sequences with different sizes:
+        circuit.set(lambda x,y: FheSeq(x)>FheSeq(y)[0:4] , True)        
+        assert( circuit.run(seq4, seq4) )
+
+
+        # ## < operand
+        # circuit.set(lambda x,y: FheSeq(x)<FheSeq(y) , True)
+
+        # # close sequences:
+        # assert( not circuit.run(seq1, seq3) )        
+        # # identical sequences
+        # assert( not circuit.run(seq1, seq1) )
+        # # sequences with different sizes:
+        # circuit.set(lambda x,y: FheSeq(x)>FheSeq(y)[0:4] , True)        
+        # assert( not circuit.run(seq4, seq4) )        
+
+
+        ## len operand
         circuit.set( lambda x,y: fhe.ones(1) if len(FheSeq(x))==5 else fhe.zeros(1), True )
         assert( np.all(circuit.run(seq1, seq2) == np.array([1])) )
 
-        # single getitem
+        ## single getitem
         def getitem(x,y):
             out=fhe.zeros(5)
             eseq = FheSeq(x)
@@ -106,7 +152,7 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(getitem)
         assert( circuit.run(seq1, seq1) == seq1 )
 
-        # multiple getitem
+        ## multiple getitem
         def getitems(x,y):
             eseq = FheSeq(x)
             return eseq[0:2].toArray()
@@ -348,4 +394,4 @@ SIMULATE = True
 #unittest.main()
 
 suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
-unittest.TextTestRunner(verbosity=2).run(suite)
+unittest.TextTestRunner(verbosity=1).run(suite)
