@@ -9,8 +9,8 @@ class SeqWrapper():
 
     # Create letters related variables (new letters can be added here in LETTERS, tables will adapt automatically)
     LETTERS = '*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(LETTERS)}
-    INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(LETTERS)}
+    LETTERS_TO_INTEGERS = {letter: index+1 for index, letter in enumerate(LETTERS)} # value 0 is reserved to encode for empty character
+    INTEGERS_TO_LETTERS = {index+1: letter for index, letter in enumerate(LETTERS)} # value 0 is reserved to encode for empty character
 
     def __init__(self, data):
         """
@@ -55,7 +55,7 @@ class SeqWrapper():
         return np.array([SeqWrapper.LETTERS_TO_INTEGERS[char] for char in self._data])
 
     def maxInteger():
-        return len(SeqWrapper.LETTERS)-1
+        return len(SeqWrapper.LETTERS)
 
     def _makeTable(letter_mapping):
         """
