@@ -125,17 +125,16 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(lambda x,y: FheSeq(x)>FheSeq(y)[0:4] , True)        
         assert( circuit.run(seq4, seq4) )
 
+        ## < operand
+        circuit.set(lambda x,y: FheSeq(x)<FheSeq(y) , True)
 
-        # ## < operand
-        # circuit.set(lambda x,y: FheSeq(x)<FheSeq(y) , True)
-
-        # # close sequences:
-        # assert( not circuit.run(seq1, seq3) )        
-        # # identical sequences
-        # assert( not circuit.run(seq1, seq1) )
-        # # sequences with different sizes:
-        # circuit.set(lambda x,y: FheSeq(x)>FheSeq(y)[0:4] , True)        
-        # assert( not circuit.run(seq4, seq4) )        
+        # close sequences:
+        assert( not circuit.run(seq1, seq3) )        
+        # identical sequences
+        assert( not circuit.run(seq1, seq1) )
+        # sequences with different sizes:
+        circuit.set(lambda x,y: FheSeq(x)[0:4]<FheSeq(y) , True)        
+        assert( circuit.run(seq4, seq4) )        
 
 
         ## len operand

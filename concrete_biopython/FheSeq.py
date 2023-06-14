@@ -52,7 +52,7 @@ class _FheSeqAbstractBaseClass(ABC):
             if length is None:
                 raise ValueError("length must not be None if data is None")
             elif length == 0:
-                self._data = fhe.zeros(length)
+                raise ValueError("length must be positive")
             elif length < 0:
                 raise ValueError("length must not be negative.")
             else:
@@ -60,9 +60,18 @@ class _FheSeqAbstractBaseClass(ABC):
                 raise NotImplemented
         elif isinstance(data, fhe.tracing.tracer.Tracer):
             if data.size>1:
-                self._data = data
+                self._data = data[:] # take a copy
+            elif data.size==1:
+                self._data = data[:].reshape(1) # take a copy
             else:
-                self._data = data.reshape(1)
+                raise ValueError("data length must be positive")
+        elif isinstance(data, _FheSeqAbstractBaseClass):
+            if data._data.size>1:
+                self._data = data._data[:] # take a copy
+            elif data._data.size==1:
+                self._data = data._data[:].reshape(1)  # take a copy
+            else:
+                self._data = fhe.zeros(0)
         else:
             print(type(data))
             raise TypeError(
