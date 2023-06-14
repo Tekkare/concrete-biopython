@@ -72,8 +72,25 @@ class TestFheSeq(unittest.TestCase):
         assert( circuit.run(seq1, seq1) )
         assert( not circuit.run(seq1, seq3))
 
-        # # < operands
-        # TODO
+        # >= operands
+        circuit.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
+
+        # close sequences:
+        assert( circuit.run(seq1, seq3) )        
+        assert( not circuit.run(seq3, seq1) )
+
+        assert( circuit.run(seq2, seq3) )        
+        assert( not circuit.run(seq3, seq2) )
+
+        # identical sequences
+        assert( circuit.run(seq1, seq1) )
+
+        # sequences with different sizes:
+        seq4 = Seq('AAAAA')
+        circuit.set(lambda x,y: FheSeq(x)>=FheSeq(y)[0:4] , True)        
+        assert( circuit.run(seq4, seq4) )
+        circuit.set(lambda x,y: FheSeq(x)[0:4]>=FheSeq(y) , True)        
+        assert( not circuit.run(seq4, seq4) )
 
         # len operand
         circuit.set( lambda x,y: fhe.ones(1) if len(FheSeq(x))==5 else fhe.zeros(1), True )
@@ -328,7 +345,7 @@ class TestFheSeq(unittest.TestCase):
 
 SIMULATE = True
 
-unittest.main()
+#unittest.main()
 
-# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_startswith')
-# unittest.TextTestRunner(verbosity=2).run(suite)
+suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
+unittest.TextTestRunner(verbosity=2).run(suite)
