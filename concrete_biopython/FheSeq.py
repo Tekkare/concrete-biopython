@@ -76,7 +76,6 @@ class _FheSeqAbstractBaseClass(ABC):
             else:
                 self._data = fhe.zeros(0)
         else:
-            print(type(data))
             raise TypeError(
                 "data should be a concrete.fhe.tracing.tracer.Tracer object"
             )    
@@ -102,7 +101,7 @@ class _FheSeqAbstractBaseClass(ABC):
         """ Computes wether a sequence is lower than another, in alphabetical order
 
         A sequence A is lower than a sequence B if and only if:
-        there exist an index i such that: A[i] < B[i]  AND  for all k<i, A[i] <= B[i]
+        there exist an index i such that: A[i] < B[i]  AND  for all k<i, A[k] <= B[k]
 
         This is the mathematical converse of A >= B (see self.__ge__) which is easier to do in fhe
 
@@ -135,7 +134,7 @@ class _FheSeqAbstractBaseClass(ABC):
         """ Computes wether a sequence is greater or equal than another, in alphabetical order
 
         A sequence A is greater or equal than a sequence B if and only if:
-        for all index i:  either  A[i] >= B[i]  or  there is an index k<i where A[i] > B[i]
+        for all index i:  either  A[i] >= B[i]  or  there is an index k<i where A[k] > B[k]
 
         If sequence have different length, the shorter one is considered to have extra empty characters
         where the empty character is the lowest in alphabetical order
@@ -155,6 +154,10 @@ class _FheSeqAbstractBaseClass(ABC):
             else:
                 B = np.concatenate((B, fhe.zeros(1).reshape(1)), axis=0)
                 A = A[0:B.size]
+        n = A.size
+
+        if n==0:
+            return 1 # special case if both arrays are empty
 
         ## compute A[i] >= B[i] array
         ge_array = A >= B
@@ -163,19 +166,21 @@ class _FheSeqAbstractBaseClass(ABC):
         gt_array = A > B 
 
         ## compute "there is an index k<i where A[i] > B[i]" array in cum_gt_array:
-        # first compute "there is an index k<=i where A[i] > B[i]" array in cum_gt_array
-        cum_gt_array = fhe.zeros(A.size)
-        cum_gt_array[0] = gt_array[0]
-        for i in range(1,A.size):
-            cum_gt_array[i] = cum_gt_array[i-1] | gt_array[i]
-        # then shift this array of 1 index to the right
-        cum_gt_array = np.concatenate((fhe.zeros (1).reshape(1), cum_gt_array[0:-1]), axis=0)
+        # if gt_array[k] is 1 for some k, cum_gt_array[i] will be 1 for all i>k
+        cum_gt_array = fhe.zeros(n)
+        if n >1:
+            cum_gt_array[1] = gt_array[0]
+        else:
+            return ge_array[0] # special case if array has size one
+
+        for i in range(2,n):
+            cum_gt_array[i] = cum_gt_array[i-1] | gt_array[i-1]
 
         ## now compute " A[i] >= B[i]  or  there is an index k<i where A[i] > B[i] " array in or_array:
         or_array = ge_array | cum_gt_array
 
         ## return wether or_array is true for all indices
-        return (A.size - np.sum(or_array))==0
+        return (n - np.sum(or_array))==0
 
     def __len__(self):
         """Return the length of the sequence."""

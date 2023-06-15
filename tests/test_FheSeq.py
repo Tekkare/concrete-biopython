@@ -136,6 +136,11 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(lambda x,y: FheSeq(x)[0:4]<FheSeq(y) , True)        
         assert( circuit.run(seq4, seq4) )        
 
+        ## >= operand
+        circuit.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
+
+        # close sequences:
+        assert( circuit.run(seq1, seq3) )        
 
         ## len operand
         circuit.set( lambda x,y: fhe.ones(1) if len(FheSeq(x))==5 else fhe.zeros(1), True )
@@ -158,7 +163,7 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(getitems)
         assert( circuit.run(seq1, seq1) == seq1[0:2] )
 
-       ## multiple getitem with copy
+        ## multiple getitem with copy
         def getitemscp(x,y):
             eseq = FheMutableSeq(x)
             eseq2= eseq[0:2]
@@ -170,6 +175,17 @@ class TestFheSeq(unittest.TestCase):
         # add sequences (concat them)
         circuit.set( lambda x,y: (FheSeq(x)+FheSeq(y)).toArray() )
         assert( circuit.run(seq1, seq2) == (seq1+seq2) )
+
+        ## >= operand for 1 letter
+        circuit2 = BioConcreteCircuit(1, SIMULATE)
+        seq1_2 = Seq('C')
+        seq2_2 = Seq('A')
+
+        circuit2.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
+        print( 'RES :',circuit2.run(seq1_2, seq2_2))
+        assert( circuit2.run(seq1_2, seq2_2) )
+        assert( circuit2.run(seq1_2, seq1_2) )
+        assert( not circuit2.run(seq2_2, seq1_2) )
 
     def test_iter(self):
         seq1 = Seq('ACGT')
@@ -401,5 +417,5 @@ SIMULATE = True
 
 unittest.main()
 
-# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_complement')
+# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
 # unittest.TextTestRunner(verbosity=1).run(suite)
