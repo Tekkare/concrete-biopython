@@ -5,10 +5,16 @@ from Bio.Seq import Seq, MutableSeq
 class SeqWrapper():
     """
     A wrapper class to interface Concrete-BioPython with BioPython
+
+    Dev notes:
+    ---------
+    New letters can be added to the LETTERS alphabet, tables will adapt automatically.
+    Adding more characters will increase the number of bits required to encode for each character.
+    The first character should be kept to \0, the empty character.
     """
 
-    # Create letters related variables (new letters can be added here in LETTERS, tables will adapt automatically)
-    LETTERS = '\0*ABCDEFGHIJKLMNOPQRSTUVWXYZ' # the first character should no be replaced, it represents the empty character ''
+    # Create letters related variables 
+    LETTERS = '\0*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(LETTERS)}
     INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(LETTERS)}
 
@@ -51,10 +57,15 @@ class SeqWrapper():
         return MutableSeq(self._data)        
 
     def toIntegers(self):
-        # Map letters to integers
+        """
+        Maps letters to integers
+        """
         return np.array([SeqWrapper.LETTERS_TO_INTEGERS[char] for char in self._data])
 
     def maxInteger():
+        """
+        Returns the maximum integer, encoding the last character from the alphabet LETTERS
+        """        
         return len(SeqWrapper.LETTERS)-1
 
     def _makeTable(letter_mapping):
