@@ -52,7 +52,7 @@ class _FheSeqAbstractBaseClass(ABC):
             if length is None:
                 raise ValueError("length must not be None if data is None")
             elif length == 0:
-                raise ValueError("length must be positive")
+                self._data = fhe.zeros(length)
             elif length < 0:
                 raise ValueError("length must not be negative.")
             else:
@@ -62,7 +62,10 @@ class _FheSeqAbstractBaseClass(ABC):
             if data.size>1:
                 self._data = data[:] # take a copy
             elif data.size==1:
-                self._data = data[:].reshape(1) # take a copy
+                try:
+                    self._data = data[:].reshape(1) # take a copy if array of size 1
+                except:
+                    self._data = data.reshape(1) # just copy value if isolated value
             else:
                 raise ValueError("data length must be positive")
         elif isinstance(data, _FheSeqAbstractBaseClass):
@@ -76,7 +79,8 @@ class _FheSeqAbstractBaseClass(ABC):
             print(type(data))
             raise TypeError(
                 "data should be a concrete.fhe.tracing.tracer.Tracer object"
-            )     
+            )    
+
 
     def toArray(self):
         return self._data
@@ -137,18 +141,20 @@ class _FheSeqAbstractBaseClass(ABC):
         where the empty character is the lowest in alphabetical order
         """       
 
-        A=self._data
-        B=other._data
+        A=self._data[:]  # copy array
+        B=other._data[:] # copy array
 
         # prepare arrays if they have different size
         if A.size != B.size:
-            # then append zeros to the shortest array to encode for empty characters
-            #   which should be lower than all other characters which are encoded with >0 integers
+            # append a zero to the shortest sequence and crop the other one
+            #   zero is always <= to any other character so no need to append more zeros
             diff= B.size - A.size
             if diff > 0:
-                A = np.concatenate((A, fhe.zeros(diff)), axis=0)
+                A = np.concatenate((A, fhe.zeros(1).reshape(1)), axis=0)
+                B = B[0:A.size]
             else:
-                B = np.concatenate((B, fhe.zeros(-diff)), axis=0)
+                B = np.concatenate((B, fhe.zeros(1).reshape(1)), axis=0)
+                A = A[0:B.size]
 
         ## compute A[i] >= B[i] array
         ge_array = A >= B
@@ -193,7 +199,7 @@ class _FheSeqAbstractBaseClass(ABC):
         """Add a sequence or array to this sequence.
         """
         if isinstance(other, _FheSeqAbstractBaseClass):
-            return self.__class__(np.concatenate((self._data, other._data), axis=0))
+            return self.__class__(np.concatenate((self._data, other._data), axis=0)) # np.concatenate will deep copy arrays
         elif isinstance(other, fhe.tracing.tracer.Tracer):
             return self.__class__(np.concatenate((self._data, other), axis=0))
         else:
@@ -267,9 +273,7 @@ class _FheSeqAbstractBaseClass(ABC):
         translationTable = fhe.LookupTable(SeqWrapper.get_translationTable(table))
 
         # first of all, reduce the integers of letters 'ACGU' (and T treated as a U) to 0,1,2,3
-        reduced_integers = fhe.zeros(len(self))
-        for i in range(len(self)):
-            reduced_integers[i] = _FheSeqAbstractBaseClass._translationReductionTable[self._data[i]]
+        reduced_integers = _FheSeqAbstractBaseClass._translationReductionTable[self._data]
 
         protein_seq = fhe.zeros(n//3)
 
@@ -292,9 +296,7 @@ class _FheSeqAbstractBaseClass(ABC):
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        complement_seq = fhe.zeros(len(self))
-        for i in range(len(self)):
-            complement_seq[i] = _FheSeqAbstractBaseClass._DNAcomplementTable[self._data[i]]
+        complement_seq = _FheSeqAbstractBaseClass._DNAcomplementTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -311,9 +313,7 @@ class _FheSeqAbstractBaseClass(ABC):
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        complement_seq = fhe.zeros(len(self))
-        for i in range(len(self)):
-            complement_seq[i] = _FheSeqAbstractBaseClass._RNAcomplementTable[self._data[i]]
+        complement_seq = _FheSeqAbstractBaseClass._RNAcomplementTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -371,9 +371,7 @@ class _FheSeqAbstractBaseClass(ABC):
         T for Threonine with U for Selenocysteine, which has no
         biologically plausible rational.
         """
-        transcribed_seq = fhe.zeros(len(self))
-        for i in range(len(self)):
-            transcribed_seq[i] = _FheSeqAbstractBaseClass._transcriptionTable[self._data[i]]
+        transcribed_seq = _FheSeqAbstractBaseClass._transcriptionTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -397,9 +395,7 @@ class _FheSeqAbstractBaseClass(ABC):
         Trying to back-transcribe a protein sequence will replace any U for
         Selenocysteine with T for Threonine, which is biologically meaningless.
         """
-        back_transcribed_seq = fhe.zeros(len(self))
-        for i in range(len(self)):
-            back_transcribed_seq[i] = _FheSeqAbstractBaseClass._backTranscriptionTable[self._data[i]]
+        back_transcribed_seq = _FheSeqAbstractBaseClass._backTranscriptionTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")

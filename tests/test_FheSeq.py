@@ -158,6 +158,15 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(getitems)
         assert( circuit.run(seq1, seq1) == seq1[0:2] )
 
+       ## multiple getitem with copy
+        def getitemscp(x,y):
+            eseq = FheMutableSeq(x)
+            eseq2= eseq[0:2]
+            eseq2[0] = eseq2[1]
+            return eseq[0:2].toArray()
+        circuit.set(getitemscp)
+        assert( circuit.run(seq1, seq1) == seq1[0:2] )        
+
         # add sequences (concat them)
         circuit.set( lambda x,y: (FheSeq(x)+FheSeq(y)).toArray() )
         assert( circuit.run(seq1, seq2) == (seq1+seq2) )
@@ -390,7 +399,7 @@ class TestFheSeq(unittest.TestCase):
 
 SIMULATE = True
 
-#unittest.main()
+unittest.main()
 
-suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
-unittest.TextTestRunner(verbosity=1).run(suite)
+# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_complement')
+# unittest.TextTestRunner(verbosity=1).run(suite)
