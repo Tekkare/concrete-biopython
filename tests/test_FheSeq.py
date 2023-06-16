@@ -415,7 +415,7 @@ class TestFheSeq(unittest.TestCase):
 
 SIMULATE = True
 
-unittest.main()
+#unittest.main()
 
-# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
-# unittest.TextTestRunner(verbosity=1).run(suite)
+suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
+unittest.TextTestRunner(verbosity=1).run(suite)

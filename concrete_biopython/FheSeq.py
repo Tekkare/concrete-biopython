@@ -90,11 +90,16 @@ class _FheSeqAbstractBaseClass(ABC):
         Sequences are equal to each other if their sequence contents is identical
         """
         if isinstance(other, _FheSeqAbstractBaseClass):
-            return (len(self) - np.sum(self._data == other._data))==0
+            other = other._data
         elif isinstance(other, fhe.tracing.tracer.Tracer):
-            return (len(self) - np.sum(self._data == other))==0
+            pass
         else:
             return NotImplemented
+
+        if len(self) != other.size:
+            return 0 # return False if the lengths are different
+        else:
+            return (len(self) - np.sum(self._data == other))==0
 
 
     def __lt__(self, other):
@@ -181,6 +186,57 @@ class _FheSeqAbstractBaseClass(ABC):
 
         ## return wether or_array is true for all indices
         return (n - np.sum(or_array))==0
+
+
+    """
+    Dev:
+    A more elegant alternative to __ge__ function, but way slower :
+
+    def _arr_ge(arr1, arr2, i):
+        if (arr2.size - i)== 0:
+            return 1
+        elif (arr1.size - i) == 0:
+            return 0
+        else:
+            return (arr1[i]>arr2[i]) | ((arr1[i]==arr2[i]) & _FheSeqAbstractBaseClass._arr_ge(arr1, arr2, i+1))
+
+    def __ge__(self, other):
+        return _FheSeqAbstractBaseClass._arr_ge(self._data, other._data, 0)
+
+    """
+
+    """
+    Dev:
+    A second alternative to __ge__ function, quite good but still slower than original:
+    
+    def __ge__(self, other):
+
+        A=self._data[:]  # copy array
+        B=other._data[:] # copy array
+
+        # prepare arrays if they have different size
+        if A.size != B.size:
+            # append a zero to the shortest sequence and crop the other one
+            #   zero is always <= to any other character so no need to append more zeros
+            diff= B.size - A.size
+            if diff > 0:
+                A = np.concatenate((A, fhe.zeros(1).reshape(1)), axis=0)
+                B = B[0:A.size]
+            else:
+                B = np.concatenate((B, fhe.zeros(1).reshape(1)), axis=0)
+                A = A[0:B.size]
+        n = A.size
+
+        arr_g = A>B
+        arr_e = A==B
+
+        ge = 1
+        for i in range(n-1,-1,-1):
+            ge = arr_g[i] | (arr_e[i] & ge)
+
+        return ge
+
+    """    
 
     def __len__(self):
         """Return the length of the sequence."""
