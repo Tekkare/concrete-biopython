@@ -8,13 +8,15 @@ class SeqWrapper():
 
     Dev notes:
     ---------
-    New letters can be added to the LETTERS alphabet, tables will adapt automatically.
+    New letters can be added to the alphabet, and tables will adapt automatically.
+    It is important that LETTERS stay sorted alphabetically, so that the > operator corresponds to the one in Bio.Seq
     Adding more characters will increase the number of bits required to encode for each character.
-    The first character should be kept to \0, the empty character.
+    The empty character character \0 should always be kept.
     """
-
+    # All letters of the alphabet
+    _alphabet = '\0*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     # Create letters related variables 
-    LETTERS = '\0*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    LETTERS = ''.join((sorted(set(_alphabet)))) # sorted alphabetically
     LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(LETTERS)}
     INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(LETTERS)}
 
