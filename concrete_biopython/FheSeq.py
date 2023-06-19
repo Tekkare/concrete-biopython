@@ -5,6 +5,7 @@ import numbers
 
 from concrete_biopython.SeqWrapper import SeqWrapper
 
+_NOT_IMPLEMENTED_FHE =  Error('This function is not compatible with FHE')
 
 class _FheSeqAbstractBaseClass(ABC):
     """
@@ -28,16 +29,12 @@ class _FheSeqAbstractBaseClass(ABC):
     # Require compatible implementaion of numpy.repeat for concrete to be done properly
     __mul__ , __rmul__ , __imul__
 
-    # Unused for now because all characters are uppercase ( this lowers the letter variable to 5 bits only)
+    # Unused for now because all characters are uppercase
     #   but lower case characters could easily be added to SeqWrapper.LETTERS
     upper , lower , isupper , islower
 
     # If the class is extended to include undefined sequences:
     defined , defined_ranges
-
-
-    Possible optimization:
-    Child class FheBaseSeq that only encode DNA and RNA bases with integers in range 0..3, which will take only 2 bits for quicker processing
 
     """
 
@@ -52,7 +49,7 @@ class _FheSeqAbstractBaseClass(ABC):
             if length is None:
                 raise ValueError("length must not be None if data is None")
             elif length == 0:
-                self._data = fhe.zeros(length)
+                self._data = fhe.zeros(0)
             elif length < 0:
                 raise ValueError("length must not be negative.")
             else:
@@ -67,17 +64,17 @@ class _FheSeqAbstractBaseClass(ABC):
                 except:
                     self._data = data.reshape(1) # just copy value if isolated value
             else:
-                raise ValueError("data length must be positive")
+                self._data = fhe.zeros(0)
         elif isinstance(data, _FheSeqAbstractBaseClass):
             if data._data.size>1:
                 self._data = data._data[:] # take a copy
             elif data._data.size==1:
                 self._data = data._data[:].reshape(1)  # take a copy
             else:
-                self._data = fhe.zeros(0)
+                self._data = fhe.zeros(0) 
         else:
             raise TypeError(
-                "data should be a concrete.fhe.tracing.tracer.Tracer object"
+                "data should be either a concrete.fhe.tracing.tracer.Tracer object or a _FheSeqAbstractBaseClass object"
             )    
 
 
@@ -97,7 +94,7 @@ class _FheSeqAbstractBaseClass(ABC):
             return NotImplemented
 
         if len(self) != other.size:
-            return 0 # return False if the lengths are different
+            return fhe.zeros(1)[0] # return False if the lengths are different
         else:
             return (len(self) - np.sum(self._data == other))==0
 
@@ -162,7 +159,7 @@ class _FheSeqAbstractBaseClass(ABC):
         n = A.size
 
         if n==0:
-            return 1 # special case if both arrays are empty
+            return fhe.ones(1)[0] # special case if both arrays are empty
 
         ## compute A[i] >= B[i] array
         ge_array = A >= B
@@ -194,9 +191,9 @@ class _FheSeqAbstractBaseClass(ABC):
 
     def _arr_ge(arr1, arr2, i):
         if (arr2.size - i)== 0:
-            return 1
+            return fhe.ones(1)[0]
         elif (arr1.size - i) == 0:
-            return 0
+            return fhe.zeros(1)[0]
         else:
             return (arr1[i]>arr2[i]) | ((arr1[i]==arr2[i]) & _FheSeqAbstractBaseClass._arr_ge(arr1, arr2, i+1))
 
@@ -311,6 +308,21 @@ class _FheSeqAbstractBaseClass(ABC):
             return self[end-l:end] == suffix
         else:
             return self[len(self)-l:] == suffix
+
+    def split(self, sep=None, maxsplit=-1):
+        raise _NOT_IMPLEMENTED_FHE
+
+    def rsplit(self, sep=None, maxsplit=-1):
+        raise _NOT_IMPLEMENTED_FHE
+
+    def strip(self, chars=None):
+        raise _NOT_IMPLEMENTED_FHE
+
+    def lstrip(self, chars=None):
+        raise _NOT_IMPLEMENTED_FHE
+
+    def rstrip(self, chars=None):
+        raise _NOT_IMPLEMENTED_FHE
 
     def translate(self, table="Standard"):
         """Turn a nucleotide sequence into a protein sequence by creating a new sequence object.
@@ -487,9 +499,9 @@ class _FheSeqAbstractBaseClass(ABC):
                 elif isinstance(data, fhe.tracing.tracer.Tracer):
                     joindata.append(data)
                 else:
-                    raise NotImplemented
+                    raise TypeError('list must contain _FheSeqAbstractBaseClass or concrete.fhe.tracing.tracer.Tracer objetcs')
         else:
-            NotImplemented
+            raise TypeError('data type must be _FheSeqAbstractBaseClass or concrete.fhe.tracing.tracer.Tracer')
 
         concatenation = joindata[0]
         for i in range(1,len(joindata)):
