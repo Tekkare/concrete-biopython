@@ -46,13 +46,13 @@ class BioConcreteCircuit:
         assert len(seq2) == self.seq_length, f"Sequence 2 length is not correct, should be {self.seq_length} characters"
 
         # convert letters to integers
-        integers1 = SeqWrapper(seq1).toIntegers()
-        integers2 = SeqWrapper(seq2).toIntegers()
+        integers1 = SeqWrapper.toIntegers(seq1)
+        integers2 = SeqWrapper.toIntegers(seq2)
         int_output = self.circuit.simulate(integers1, integers2) if self.simulate else self.circuit.encrypt_run_decrypt(integers1, integers2)
 
         if not self._integers_output:
             # convert back integers to letters    
-            return SeqWrapper(int_output).toSeq()
+            return SeqWrapper.toSeq(int_output)
         else:
             return int_output
 
@@ -415,7 +415,7 @@ class TestFheSeq(unittest.TestCase):
 
 SIMULATE = True
 
-#unittest.main()
+unittest.main()
 
-suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
-unittest.TextTestRunner(verbosity=1).run(suite)
+# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
+# unittest.TextTestRunner(verbosity=1).run(suite)

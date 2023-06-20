@@ -5,7 +5,7 @@ import numbers
 
 from concrete_biopython.SeqWrapper import SeqWrapper
 
-_NOT_IMPLEMENTED_FHE =  Error('This function is not compatible with FHE')
+_NOT_IMPLEMENTED_FHE =  Exception('This function is not compatible with FHE')
 
 class _FheSeqAbstractBaseClass(ABC):
     """
@@ -37,12 +37,6 @@ class _FheSeqAbstractBaseClass(ABC):
     defined , defined_ranges
 
     """
-
-    _DNAcomplementTable = fhe.LookupTable(SeqWrapper.get_DNA_complementTable()) 
-    _RNAcomplementTable = fhe.LookupTable(SeqWrapper.get_RNA_complementTable()) 
-    _transcriptionTable = fhe.LookupTable(SeqWrapper.get_transcriptionTable()) 
-    _backTranscriptionTable = fhe.LookupTable(SeqWrapper.get_back_transcriptionTable())
-    _translationReductionTable = fhe.LookupTable(SeqWrapper.get_translationReductionTable())
 
     def __init__(self, data, length=None):
         if data is None:
@@ -346,7 +340,8 @@ class _FheSeqAbstractBaseClass(ABC):
         translationTable = fhe.LookupTable(SeqWrapper.get_translationTable(table))
 
         # first of all, reduce the integers of letters 'ACGU' (and T treated as a U) to 0,1,2,3
-        reduced_integers = _FheSeqAbstractBaseClass._translationReductionTable[self._data]
+        translationReductionTable = fhe.LookupTable(SeqWrapper.get_translationReductionTable())
+        reduced_integers = translationReductionTable[self._data]
 
         protein_seq = fhe.zeros(n//3)
 
@@ -369,7 +364,8 @@ class _FheSeqAbstractBaseClass(ABC):
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        complement_seq = _FheSeqAbstractBaseClass._DNAcomplementTable[self._data]
+        DNAcomplementTable = fhe.LookupTable(SeqWrapper.get_DNA_complementTable()) 
+        complement_seq = DNAcomplementTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -386,7 +382,8 @@ class _FheSeqAbstractBaseClass(ABC):
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        complement_seq = _FheSeqAbstractBaseClass._RNAcomplementTable[self._data]
+        RNAcomplementTable = fhe.LookupTable(SeqWrapper.get_RNA_complementTable()) 
+        complement_seq = RNAcomplementTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -444,7 +441,8 @@ class _FheSeqAbstractBaseClass(ABC):
         T for Threonine with U for Selenocysteine, which has no
         biologically plausible rational.
         """
-        transcribed_seq = _FheSeqAbstractBaseClass._transcriptionTable[self._data]
+        transcriptionTable = fhe.LookupTable(SeqWrapper.get_transcriptionTable()) 
+        transcribed_seq = transcriptionTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
@@ -468,7 +466,8 @@ class _FheSeqAbstractBaseClass(ABC):
         Trying to back-transcribe a protein sequence will replace any U for
         Selenocysteine with T for Threonine, which is biologically meaningless.
         """
-        back_transcribed_seq = _FheSeqAbstractBaseClass._backTranscriptionTable[self._data]
+        backTranscriptionTable = fhe.LookupTable(SeqWrapper.get_back_transcriptionTable())
+        back_transcribed_seq = backTranscriptionTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
                 raise TypeError("Sequence is immutable")
