@@ -109,8 +109,8 @@ class SeqWrapper():
         """
         try:
             integer_mapping = { SeqWrapper.LETTERS_TO_INTEGERS[letter]: SeqWrapper.LETTERS_TO_INTEGERS[letter_mapping[letter]] for letter in letter_mapping.keys() }
-        except KeyError: # if the alphabet was changed and does not contain the right letters anymore
-            raise KeyError('SeqWrapper alphabet does not contain the appropriate letters for this table')
+        except KeyError as e: # if the alphabet was changed and does not contain the right letters anymore
+            raise KeyError('SeqWrapper alphabet has been set without the required letter:' + str(e))
 
         return [ integer_mapping[i] if i in integer_mapping else 0 for i in range(len(SeqWrapper.LETTERS)) ]
 
@@ -171,5 +171,9 @@ class SeqWrapper():
         codons_translated = [Seq(c).translate(table).__str__() for c in codons]
 
         # return a table of the integer represntation of the protein letters
-        return [SeqWrapper.LETTERS_TO_INTEGERS[letter] for letter in codons_translated]
+        try:
+            return [SeqWrapper.LETTERS_TO_INTEGERS[letter] for letter in codons_translated]    
+        except KeyError as e: # if the alphabet was changed and does not contain the right letters anymore
+            raise KeyError('SeqWrapper alphabet has been set without the required letter:' + str(e))
+        
 
