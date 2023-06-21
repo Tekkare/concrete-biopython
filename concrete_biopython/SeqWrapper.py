@@ -23,7 +23,7 @@ class SeqWrapper():
     LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(LETTERS)}
     INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(LETTERS)}
 
-    def __init__(self, data):
+    def __init__(self, *args): 
         raise Exception('This class should not be instanciated')
 
     def setAlphabet(alphabet):
