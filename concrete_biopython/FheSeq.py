@@ -337,18 +337,16 @@ class _FheSeqAbstractBaseClass(ABC):
                 "Partial codon, len(sequence) not a multiple of three. "
             )
 
-        translationTable = fhe.LookupTable(SeqWrapper.get_translationTable(table))
-
         # first of all, reduce the integers of letters 'ACGU' (and T treated as a U) to 0,1,2,3
         translationReductionTable = fhe.LookupTable(SeqWrapper.get_translationReductionTable())
         reduced_integers = translationReductionTable[self._data]
 
-        protein_seq = fhe.zeros(n//3)
+        # compute codon indices from first, second and third letters
+        codon_indices = reduced_integers[0::3]*16 + reduced_integers[1::3]*4 + reduced_integers[2::3]
 
-        for i in range(n//3):
-            # compute codon index from first, second and third letters
-            codon_index = reduced_integers[i*3]*16 + reduced_integers[i*3+1]*4 + reduced_integers[i*3+2]
-            protein_seq[i] = translationTable[codon_index]
+        # apply translation of the codons by their index in the translation table
+        translationTable = fhe.LookupTable(SeqWrapper.get_translationTable(table))        
+        protein_seq = translationTable[codon_indices]
 
         return self.__class__(protein_seq)
 
