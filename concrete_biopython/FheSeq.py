@@ -99,135 +99,71 @@ class _FheSeqAbstractBaseClass(ABC):
         A sequence A is lower than a sequence B if and only if:
         there exist an index i such that: A[i] < B[i]  AND  for all k<i, A[k] <= B[k]
 
-        This is the mathematical converse of A >= B (see self.__ge__) which is easier to do in fhe
-
         If sequence have different length, the shorter one is considered to have extra empty characters
         where the empty character is the lowest in alphabetical order
         """
-        return 1-(self >= other)
-
-    def __le__(self, other):
-        """ Computes wether a sequence is lower or equal than another, in alphabetical order
-
-        The proposition "A <= B" is equivalent to "B >= A" (see self.__ge__)
-
-        If sequence have different length, the shorter one is considered to have extra empty characters
-        where the empty character is the lowest in alphabetical order
-        """       
-        return other >= self
-
-    def __gt__(self, other):
-        """ Computes wether a sequence is greater than another, in alphabetical order
-
-        The proposition "A > B" is the mathematical converse of "B >= A" (see self.__ge__)
-
-        If sequence have different length, the shorter one is considered to have extra empty characters
-        where the empty character is the lowest in alphabetical order
-        """
-        return 1-(other >= self)
-
-    def __ge__(self, other):
-        """ Computes wether a sequence is greater or equal than another, in alphabetical order
-
-        A sequence A is greater or equal than a sequence B if and only if:
-        for all index i:  either  A[i] >= B[i]  or  there is an index k<i where A[k] > B[k]
-
-        If sequence have different length, the shorter one is considered to have extra empty characters
-        where the empty character is the lowest in alphabetical order
-        """       
-
-        A=self._data[:]  # copy array
-        B=other._data[:] # copy array
-
         # prepare arrays if they have different size
-        if A.size != B.size:
-            # append a zero to the shortest sequence and crop the other one
-            #   zero is always <= to any other character so no need to append more zeros
-            diff= B.size - A.size
-            if diff > 0:
-                A = np.concatenate((A, fhe.zeros(1).reshape(1)), axis=0)
-                B = B[0:A.size]
-            else:
-                B = np.concatenate((B, fhe.zeros(1).reshape(1)), axis=0)
-                A = A[0:B.size]
+        difflen = len(other) - len(self)
+        
+        # append a zero to the shortest sequence and crop the other one
+        # zero is always <= to any other character so no need to append more zeros
+        if difflen > 0:
+            A = np.concatenate((self._data, fhe.zeros(1).reshape(1)), axis=0)
+            B = other._data[0:A.size]
+        elif difflen <0:
+            B = np.concatenate((other._data, fhe.zeros(1).reshape(1)), axis=0)
+            A = self._data[0:B.size]
+        else:
+            A=self._data[:]  # copy array
+            B=other._data[:] # copy array
+
         n = A.size
 
         if n==0:
             return fhe.ones(1)[0] # special case if both arrays are empty
 
-        ## compute A[i] >= B[i] array
-        ge_array = A >= B
+        # Fast computation of (A < B)
+        # (This algorithm is inspired from the behavior of the failure of subtraction(A,B) algorithm when A < B)
+        borrow = 0
+        for i in range(n):
+            # report borrow
+            borrow = A[-i-1] - B[-i-1] - borrow < 0
         
-        ## compute A[i] > B[i] array
-        gt_array = A > B 
-
-        ## compute "there is an index k<i where A[i] > B[i]" array in cum_gt_array:
-        # if gt_array[k] is 1 for some k, cum_gt_array[i] will be 1 for all i>k
-        cum_gt_array = fhe.zeros(n)
-        if n >1:
-            cum_gt_array[1] = gt_array[0]
-        else:
-            return ge_array[0] # special case if array has size one
-
-        for i in range(2,n):
-            cum_gt_array[i] = cum_gt_array[i-1] | gt_array[i-1]
-
-        ## now compute " A[i] >= B[i]  or  there is an index k<i where A[i] > B[i] " array in or_array:
-        or_array = ge_array | cum_gt_array
-
-        ## return wether or_array is true for all indices
-        return (n - np.sum(or_array))==0
+        # When A < B, subtracting B from A fails and overflows, we use the overflow value borrow to know if A < B
+        return borrow
 
 
-    """
-    Dev:
-    A more elegant alternative to __ge__ function, but way slower :
+    def __le__(self, other):
+        """ Computes wether a sequence is lower or equal than another, in alphabetical order
 
-    def _arr_ge(arr1, arr2, i):
-        if (arr2.size - i)== 0:
-            return fhe.ones(1)[0]
-        elif (arr1.size - i) == 0:
-            return fhe.zeros(1)[0]
-        else:
-            return (arr1[i]>arr2[i]) | ((arr1[i]==arr2[i]) & _FheSeqAbstractBaseClass._arr_ge(arr1, arr2, i+1))
+        The proposition "A <= B" is equivalent to "not (B < A)" (see self.__lt__)
+
+        If sequence have different length, the shorter one is considered to have extra empty characters
+        where the empty character is the lowest in alphabetical order
+        """       
+        return 1-(other < self)
+
+    def __gt__(self, other):
+        """ Computes wether a sequence is greater than another, in alphabetical order
+
+        The proposition "A > B" is the symetry of "B < A" (see self.__lt__)
+
+        If sequence have different length, the shorter one is considered to have extra empty characters
+        where the empty character is the lowest in alphabetical order
+        """
+        return other < self
 
     def __ge__(self, other):
-        return _FheSeqAbstractBaseClass._arr_ge(self._data, other._data, 0)
+        """ Computes wether a sequence is greater or equal than another, in alphabetical order
 
-    """
+        The proposition "A >= B" is equivalent to of "not (A < B)" (see self.__lt__)
 
-    """
-    Dev:
-    A second alternative to __ge__ function, quite good but still slower than original:
-    
-    def __ge__(self, other):
+        If sequence have different length, the shorter one is considered to have extra empty characters
+        where the empty character is the lowest in alphabetical order
+        """       
+        return 1-(self < other)
 
-        A=self._data[:]  # copy array
-        B=other._data[:] # copy array
 
-        # prepare arrays if they have different size
-        if A.size != B.size:
-            # append a zero to the shortest sequence and crop the other one
-            #   zero is always <= to any other character so no need to append more zeros
-            diff= B.size - A.size
-            if diff > 0:
-                A = np.concatenate((A, fhe.zeros(1).reshape(1)), axis=0)
-                B = B[0:A.size]
-            else:
-                B = np.concatenate((B, fhe.zeros(1).reshape(1)), axis=0)
-                A = A[0:B.size]
-        n = A.size
-
-        arr_g = A>B
-        arr_e = A==B
-
-        ge = 1
-        for i in range(n-1,-1,-1):
-            ge = arr_g[i] | (arr_e[i] & ge)
-
-        return ge
-
-    """    
 
     def __len__(self):
         """Return the length of the sequence."""
