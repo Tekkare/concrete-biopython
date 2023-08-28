@@ -459,6 +459,7 @@ class FheSeq(_FheSeqAbstractBaseClass):
     
     TODO:
 
+    get_item for multiple encrypted items
     __hash__
 
     """
