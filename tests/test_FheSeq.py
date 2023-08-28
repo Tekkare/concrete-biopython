@@ -156,6 +156,13 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(getitem)
         assert( circuit.run(seq1, seq1) == seq1 )
 
+        ## single encrypted getitem
+        def getitem_enc(x,y):
+            return FheSeq(x)[y[1]]
+        circuit.set(getitem_enc, True)
+        seq_abcde = Seq('ABCDE')
+        assert( circuit.run(seq1, seq_abcde) == SeqWrapper.LETTERS_TO_INTEGERS[seq1[SeqWrapper.LETTERS_TO_INTEGERS[seq_abcde[1]]]] )
+
         ## multiple getitem
         def getitems(x,y):
             eseq = FheSeq(x)
@@ -182,7 +189,6 @@ class TestFheSeq(unittest.TestCase):
         seq2_2 = Seq('A')
 
         circuit2.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
-        print( 'RES :',circuit2.run(seq1_2, seq2_2))
         assert( circuit2.run(seq1_2, seq2_2) )
         assert( circuit2.run(seq1_2, seq1_2) )
         assert( not circuit2.run(seq2_2, seq1_2) )
