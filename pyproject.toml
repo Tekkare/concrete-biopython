@@ -9,9 +9,9 @@ packages = [{include = "concrete_biopython"}]
 [tool.poetry.dependencies]
 python = ">=3.9, <3.12"
 biopython = "^1.81"
-concrete-python = "^1.0.0"
 ipykernel = "^6.23.1"
 matplotlib = "^3.7.1"
+concrete-python = "^2.2.0"
 
 [build-system]
 requires = ["poetry-core"]
