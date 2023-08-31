@@ -46,13 +46,13 @@ class BioConcreteCircuit:
         assert len(seq2) == self.seq_length, f"Sequence 2 length is not correct, should be {self.seq_length} characters"
 
         # convert letters to integers
-        integers1 = SeqWrapper(seq1).toIntegers()
-        integers2 = SeqWrapper(seq2).toIntegers()
+        integers1 = SeqWrapper.toIntegers(seq1)
+        integers2 = SeqWrapper.toIntegers(seq2)
         int_output = self.circuit.simulate(integers1, integers2) if self.simulate else self.circuit.encrypt_run_decrypt(integers1, integers2)
 
         if not self._integers_output:
             # convert back integers to letters    
-            return SeqWrapper(int_output).toSeq()
+            return SeqWrapper.toSeq(int_output)
         else:
             return int_output
 
@@ -67,19 +67,86 @@ class TestFheSeq(unittest.TestCase):
         seq2 = Seq('CGTUA')        
         seq3 = Seq('ACGTA')        
 
-        # == operands
+        ## == operand
         circuit.set(lambda x,y: FheSeq(x)==FheSeq(y) , True)
         assert( circuit.run(seq1, seq1) )
         assert( not circuit.run(seq1, seq3))
 
-        # # < operands
-        # TODO
+        ## >= operand
+        circuit.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
 
-        # len operand
+        # close sequences:
+        assert( circuit.run(seq1, seq3) )        
+        assert( not circuit.run(seq3, seq1) )
+
+        assert( circuit.run(seq2, seq3) )        
+        assert( not circuit.run(seq3, seq2) )
+
+        # identical sequences
+        assert( circuit.run(seq1, seq1) )
+
+        # sequences with different sizes:
+        seq4 = Seq('AAAAA')
+        circuit.set(lambda x,y: FheSeq(x)>=FheSeq(y)[0:4] , True)        
+        assert( circuit.run(seq4, seq4) )
+        circuit.set(lambda x,y: FheSeq(x)[0:4]>=FheSeq(y) , True)        
+        assert( not circuit.run(seq4, seq4) )
+
+
+        ## <= operand
+        circuit.set(lambda x,y: FheSeq(x)<=FheSeq(y) , True)
+
+        # close sequences:
+        assert( circuit.run(seq3, seq1) )        
+        assert( not circuit.run(seq1, seq3) )
+
+        assert( circuit.run(seq3, seq2) )        
+        assert( not circuit.run(seq2, seq3) )
+
+        # identical sequences
+        assert( circuit.run(seq1, seq1) )
+
+        # sequences with different sizes:
+        seq4 = Seq('AAAAA')
+        circuit.set(lambda x,y: FheSeq(x)<=FheSeq(y)[0:4] , True)        
+        assert( not circuit.run(seq4, seq4) )
+        circuit.set(lambda x,y: FheSeq(x)[0:4]<=FheSeq(y) , True)        
+        assert( circuit.run(seq4, seq4) )
+
+
+        ## > operand
+        circuit.set(lambda x,y: FheSeq(x)>FheSeq(y) , True)
+
+        # close sequences:
+        assert( circuit.run(seq1, seq3) )        
+        # identical sequences
+        assert( not circuit.run(seq1, seq1) )
+        # sequences with different sizes:
+        circuit.set(lambda x,y: FheSeq(x)>FheSeq(y)[0:4] , True)        
+        assert( circuit.run(seq4, seq4) )
+
+        ## < operand
+        circuit.set(lambda x,y: FheSeq(x)<FheSeq(y) , True)
+
+        # close sequences:
+        assert( not circuit.run(seq1, seq3) )        
+        # identical sequences
+        assert( not circuit.run(seq1, seq1) )
+        # sequences with different sizes:
+        circuit.set(lambda x,y: FheSeq(x)[0:4]<FheSeq(y) , True)        
+        assert( circuit.run(seq4, seq4) )        
+
+        ## >= operand
+        circuit.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
+
+        # close sequences:
+        assert( circuit.run(seq1, seq3) )        
+
+        ## len operand
         circuit.set( lambda x,y: fhe.ones(1) if len(FheSeq(x))==5 else fhe.zeros(1), True )
         assert( np.all(circuit.run(seq1, seq2) == np.array([1])) )
 
-        # single getitem
+        ## single getitem
         def getitem(x,y):
             out=fhe.zeros(5)
             eseq = FheSeq(x)
@@ -89,16 +156,42 @@ class TestFheSeq(unittest.TestCase):
         circuit.set(getitem)
         assert( circuit.run(seq1, seq1) == seq1 )
 
-        # multiple getitem
+        ## single encrypted getitem
+        def getitem_enc(x,y):
+            return FheSeq(x)[y[1]]
+        circuit.set(getitem_enc, True)
+        seq_abcde = Seq('ABCDE')
+        assert( circuit.run(seq1, seq_abcde) == SeqWrapper.LETTERS_TO_INTEGERS[seq1[SeqWrapper.LETTERS_TO_INTEGERS[seq_abcde[1]]]] )
+
+        ## multiple getitem
         def getitems(x,y):
             eseq = FheSeq(x)
             return eseq[0:2].toArray()
         circuit.set(getitems)
         assert( circuit.run(seq1, seq1) == seq1[0:2] )
 
+        ## multiple getitem with copy
+        def getitemscp(x,y):
+            eseq = FheMutableSeq(x)
+            eseq2= eseq[0:2]
+            eseq2[0] = eseq2[1]
+            return eseq[0:2].toArray()
+        circuit.set(getitemscp)
+        assert( circuit.run(seq1, seq1) == seq1[0:2] )        
+
         # add sequences (concat them)
         circuit.set( lambda x,y: (FheSeq(x)+FheSeq(y)).toArray() )
         assert( circuit.run(seq1, seq2) == (seq1+seq2) )
+
+        ## >= operand for 1 letter
+        circuit2 = BioConcreteCircuit(1, SIMULATE)
+        seq1_2 = Seq('C')
+        seq2_2 = Seq('A')
+
+        circuit2.set(lambda x,y: FheSeq(x)>=FheSeq(y) , True)
+        assert( circuit2.run(seq1_2, seq2_2) )
+        assert( circuit2.run(seq1_2, seq1_2) )
+        assert( not circuit2.run(seq2_2, seq1_2) )
 
     def test_iter(self):
         seq1 = Seq('ACGT')
@@ -330,5 +423,5 @@ SIMULATE = True
 
 unittest.main()
 
-# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_startswith')
-# unittest.TextTestRunner(verbosity=2).run(suite)
+# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_operands')
+# unittest.TextTestRunner(verbosity=1).run(suite)

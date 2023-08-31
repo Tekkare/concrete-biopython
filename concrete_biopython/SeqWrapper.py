@@ -1,60 +1,105 @@
 import numpy as np
+import itertools
 from Bio.Seq import Seq, MutableSeq
 
 
 class SeqWrapper():
     """
     A wrapper class to interface Concrete-BioPython with BioPython
+
+    Dev notes:
+    ---------
+    New letters can be added to the default alphabet, and tables will adapt automatically.
+    LETTERS will be automatically sorted alphabetically, so that the > operator corresponds to the one in Bio.Seq.
+    Adding more characters will increase the number of bits required to encode for each character.
+    The empty character character \0 should always be kept in the default alphabet
     """
 
-    # Create letters related variables (new letters can be added here in LETTERS, tables will adapt automatically)
-    LETTERS = '*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    # All letters of the default alphabet
+    _DEFAULT_ALPHABET = '\0*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    # Initialize letter related variables 
+    LETTERS = ''.join((sorted(set(_DEFAULT_ALPHABET))))
     LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(LETTERS)}
     INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(LETTERS)}
 
-    def __init__(self, data):
-        """
-        Arguments:
-        - data: can be a BioPython Seq, MutableSeq, str or numpy array
-        """
+    def __init__(self, *args): 
+        raise Exception('This class should not be instanciated')
 
-        # if data is an integer array, translate it to letters if needed
-        if isinstance(data, np.ndarray):
+    def setAlphabet(alphabet):
+        """
+        Set a custom alphabet for optimized computations, typically for DNA/RNA only
+        """
+        if not isinstance(alphabet, str):
+            raise ValueError('alphabet must be a string')
+        if not '\0' in alphabet:
+            alphabet += '\0'
+        SeqWrapper.LETTERS = ''.join((sorted(set(alphabet))))
+        SeqWrapper.LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(SeqWrapper.LETTERS)}
+        SeqWrapper.INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(SeqWrapper.LETTERS)}
+
+    def resetAlphabet():
+        """
+        Reset alphabet to default value
+        """
+        SeqWrapper.setAlphabet(SeqWrapper._DEFAULT_ALPHABET)
+
+    def toStr(array):
+        """
+        Map integer array to string
+        """
+        # array is an integer array, translate it to letters 
+        if isinstance(array, np.ndarray):
             valid_integers = set(SeqWrapper.INTEGERS_TO_LETTERS.keys())
-            if not set(data).issubset(valid_integers):
+            if not set(array).issubset(valid_integers):
                 raise ValueError("Invalid integers, must be in range 0:",len(SeqWrapper.LETTERS))
-            data = ''.join([SeqWrapper.INTEGERS_TO_LETTERS[integer] for integer in data])
+            string = ''.join([SeqWrapper.INTEGERS_TO_LETTERS[integer] for integer in array])
 
-        elif isinstance(data, Seq) or isinstance(data, MutableSeq):
+        else:
+            raise ValueError('input must be an integer array')
+
+        return string
+
+    def toSeq(array):
+        """
+        Map integer array to Seq object
+        """        
+        return Seq(SeqWrapper.toStr(array))
+
+    def toMutableSeq(array):
+        """
+        Map integer array to MutableSeq object
+        """        
+        return MutableSeq(SeqWrapper.toStr(array))
+
+    def toIntegers(data):
+        """
+        Maps letters to integers
+
+        Arguments:
+        - data: can be a BioPython Seq, MutableSeq, or str
+        """
+        if isinstance(data, Seq) or isinstance(data, MutableSeq):
             data = data.__str__()
 
         elif isinstance(data, str):
             data = data
 
         else:
-            raise ValueError('data must be either BioPython Seq, MutableSeq, str or numpy array')
+            raise ValueError('data must be either BioPython Seq, MutableSeq or str ')
 
         # Verify sequence letters
         valid_chars = set(SeqWrapper.LETTERS_TO_INTEGERS.keys())
         if not set(data).issubset(valid_chars):
             raise ValueError("Invalid characters, must be in ", SeqWrapper.LETTERS)
 
-        self._data = data
-
-    def __str__(self):
-        return self._data
-
-    def toSeq(self):
-        return Seq(self._data)
-
-    def toMutableSeq(self):
-        return MutableSeq(self._data)        
-
-    def toIntegers(self):
-        # Map letters to integers
-        return np.array([SeqWrapper.LETTERS_TO_INTEGERS[char] for char in self._data])
+        # return array
+        return np.array([SeqWrapper.LETTERS_TO_INTEGERS[char] for char in data])
 
     def maxInteger():
+        """
+        Returns the maximum integer, encoding the last character from the alphabet LETTERS
+        """        
         return len(SeqWrapper.LETTERS)-1
 
     def _makeTable(letter_mapping):
@@ -62,7 +107,11 @@ class SeqWrapper():
         Makes an integer mapping table from a letter mapping
         Absent letters are mapped to the index 0 which should not be done
         """
-        integer_mapping = { SeqWrapper.LETTERS_TO_INTEGERS[letter]: SeqWrapper.LETTERS_TO_INTEGERS[letter_mapping[letter]] for letter in letter_mapping.keys() }
+        try:
+            integer_mapping = { SeqWrapper.LETTERS_TO_INTEGERS[letter]: SeqWrapper.LETTERS_TO_INTEGERS[letter_mapping[letter]] for letter in letter_mapping.keys() }
+        except KeyError as e: # if the alphabet was changed and does not contain the right letters anymore
+            raise KeyError('SeqWrapper alphabet has been set without the required letter:' + str(e))
+
         return [ integer_mapping[i] if i in integer_mapping else 0 for i in range(len(SeqWrapper.LETTERS)) ]
 
     def get_DNA_complementTable():
@@ -115,8 +164,6 @@ class SeqWrapper():
         Any T is treated like a U
         Other letters are mapped to the integer 0, which should not be done
         """
-        import itertools
-
         # generate all possible codons in alphabetical order
         codons = [''.join(comb) for comb in itertools.product('ACGU', repeat=3)]
 
@@ -124,5 +171,9 @@ class SeqWrapper():
         codons_translated = [Seq(c).translate(table).__str__() for c in codons]
 
         # return a table of the integer represntation of the protein letters
-        return [SeqWrapper.LETTERS_TO_INTEGERS[letter] for letter in codons_translated]
+        try:
+            return [SeqWrapper.LETTERS_TO_INTEGERS[letter] for letter in codons_translated]    
+        except KeyError as e: # if the alphabet was changed and does not contain the right letters anymore
+            raise KeyError('SeqWrapper alphabet has been set without the required letter:' + str(e))
+        
 
