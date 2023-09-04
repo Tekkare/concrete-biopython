@@ -13,6 +13,12 @@ class SeqWrapper():
     LETTERS will be automatically sorted alphabetically, so that the > operator corresponds to the one in Bio.Seq.
     Adding more characters will increase the number of bits required to encode for each character.
     The empty character character \0 should always be kept in the default alphabet
+
+    TODO:
+
+    - add default alphabet like 'DNA' or 'DNA/RNA' or 'DNA/RNA/proteins'
+    - add addAlphabet to add letters to the alphabet
+
     """
 
     # All letters of the default alphabet

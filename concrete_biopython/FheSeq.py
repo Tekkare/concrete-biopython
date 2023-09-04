@@ -22,6 +22,8 @@ class _FheSeqAbstractBaseClass(ABC):
     
     TODO:
 
+    - add possibility to initilize data with unencrypted str data, that will directly be converted to ints
+
     # Hard to implement in fhe (if doable):
     count, count_overlap , __contains__ , find , rfind , index , rindex, replace
 
