@@ -19,10 +19,6 @@ class _FheSeqAbstractBaseClass(ABC):
 
     Dev notes :
     -----------
-    
-    TODO:
-
-    - add possibility to initilize data with unencrypted str data, that will directly be converted to ints
 
     # Hard to implement in fhe (if doable):
     count, count_overlap , __contains__ , find , rfind , index , rindex, replace
@@ -70,9 +66,23 @@ class _FheSeqAbstractBaseClass(ABC):
                 self._data = data._data[:].reshape(1)  # take a copy
             else:
                 self._data = fhe.zeros(0) 
+        elif isinstance(data, str):
+            # convert str to clear integers
+            self.data = SeqWrapper.toIntegers(data)
+        elif isinstance(data, np.ndarray):
+            # check array type
+            if data.dtype != np.int:
+                raise ValueError("data is a ndarray but has not integerer dtype")
+            # store clear integers
+            self.data = data.copy()
         else:
             raise TypeError(
-                "data should be either a concrete.fhe.tracing.tracer.Tracer object or a _FheSeqAbstractBaseClass object"
+                "data should be either of these types: \n\
+                concrete.fhe.tracing.tracer.Tracer\n\
+                _FheSeqAbstractBaseClass\n\
+                str\n\
+                numpy.ndarray (with dtype = np.int)\n\
+                "
             )    
 
 
@@ -92,7 +102,7 @@ class _FheSeqAbstractBaseClass(ABC):
             raise NotImplementedError
 
         if len(self) != other.size:
-            return fhe.zeros(1)[0] # return False if the lengths are different
+            return fhe.zero() # return False if the lengths are different
         else:
             return (len(self) - np.sum(self._data == other))==0
 
@@ -124,7 +134,7 @@ class _FheSeqAbstractBaseClass(ABC):
         n = A.size
 
         if n==0:
-            return fhe.ones(1)[0] # special case if both arrays are empty
+            return fhe.one() # special case if both arrays are empty
 
         # Fast computation of (A < B)
         # (This algorithm is inspired from the behavior of the failure of subtraction(A,B) algorithm when A < B)
