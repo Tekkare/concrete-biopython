@@ -7,60 +7,6 @@ from concrete_biopython.FheSeq import FheSeq, FheMutableSeq
 from concrete_biopython.SeqWrapper import SeqWrapper
 
 
-# # Separate sequences in two groups 
-# def separate_sequences(seq_list, encryption):
-#     # Check if the lengths of the list and dictionary match
-#     if len(seq_list) != len(encryption):
-#         raise ValueError("Sequence list and encryption dictionary sizes do not match")
-
-#     # Initialize two lists to store clear and encrypted values
-#     clear_values = []
-#     encrypted_values = []
-
-#     # Iterate over the elements of the list and the dictionary
-#     for i in range(len(seq_list)):
-#         value = encryption[key]
-#         if value == "clear":
-#             clear_values.append(seq_list[i])
-#         elif value == "encrypted":
-#             encrypted_values.append(seq_list[i])
-#         else:
-#             raise ValueError(f"Invalid value in the dictionary for key {key}: {value}\n\
-#                 should be either \"encrypted\" or \"clear\"")
-
-#     return encrypted_values, clear_values
-
-# def concat_sequences(seq_list):
-#     """
-#     Concatenate a list of Seq or FheSeq sequences, and records their indices as slice objects.
-#     """
-#     seq= seq_list[0]
-#     index=len(seq_list[0])
-#     slices=[slice(0,index)]
-#     for i in range(1, len(seq_list)):
-#         seq += seq_list[i] # Seq objects can be directly added
-#         slices.append(slice(index, index+len(seq_list[i])))
-#         index+=len(seq_list[i])
-#     return seq, slices
-
-# def slice_sequence(seq, slices):
-#     """
-#     Slice a long sequence into its original sub-sequences
-#     """
-#     seq_list=[]
-#     index=0
-#     for ind in slices:
-#         seq_list.append(seq[ind.start:ind.stop])
-#     return seq_list
-
-# # Compute the minimal alphabet to represent a Seq object
-# def compute_alphabet(seq):
-#     # Use a set to store unique letters
-#     unique_letters = set(str(seq))
-#     # Convert the set of unique letters back to a sorted string
-#     return ''.join(sorted(unique_letters))
-
-
 # Compute the minimal alphabet to represent a Seq object
 def compute_alphabet(seq_list):
     # Use a set to store unique letters
@@ -73,28 +19,36 @@ def compute_alphabet(seq_list):
 
 
 # Wrap a function so that it can use MutableSeq objects in inputs and a MutableSeq/Seq in output
-def function_wrapper_factory(function, param_names):
+def function_wrapper_factory(param_names):
 
-    # Create a dynamic version of the above function wrapper
-    # than can take named parameters, the ones from encryption:
-    #
-    # def function_wrapper(seq1, seq2, ...):
-    #     fhe_arrays = [seq1, seq2, ...]
-    #     fhe_mutableSeqs = [ FheMutableSeq(fhe_seq) for fhe_seq in fhe_arrays ]
-    #     output = function(*fhe_mutableSeqs)
-    #     # if the output of the function is a FheSeq or FheMutableSeq, convert it back to an array
-    #     if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):
-    #         output = output.toArray()
-    #     return output    
+    """
+    Create a dynamic version of the above double function wrapper
+    than can take named parameters, the ones from encryption:
+    
+    def function_double_wrapper(function):
+    
+        def function_wrapper(seq1, seq2, ...):
+            fhe_arrays = [seq1, seq2, ...]
+            fhe_mutableSeqs = [ FheMutableSeq(fhe_seq) for fhe_seq in fhe_arrays ]
+            output = function(*fhe_mutableSeqs)
+            # if the output of the function is a FheSeq or FheMutableSeq, convert it back to an array
+            if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):
+                output = output.toArray()
+            return output  
+    
+        return function_wrapper  
+    """
 
     # Create the function definition as a string
-    func_str = f"def function_wrapper({', '.join(param_names)}):\n"+
-        f"    fhe_arrays = [{', '.join(param_names)}]\n"+
-        "    fhe_mutableSeqs = [ FheMutableSeq(fhe_seq) for fhe_seq in fhe_arrays ]\n"+
-        "    output = function(*fhe_mutableSeqs)\n"+
-        "    if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):\n"+
-        "       output = output.toArray()\n"+
-        "    return output"
+    func_str =  "def function_double_wrapper(function):\n"
+    func_str += f"    def function_wrapper({', '.join(param_names)}):\n"
+    func_str += f"        fhe_arrays = [{', '.join(param_names)}]\n"
+    func_str +=  "        fhe_mutableSeqs = [ FheMutableSeq(fhe_seq) for fhe_seq in fhe_arrays ]\n"
+    func_str +=  "        output = function(*fhe_mutableSeqs)\n"
+    func_str +=  "        if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):\n"
+    func_str +=  "            output = output.toArray()\n"
+    func_str +=  "        return output\n"
+    func_str +=  "    return function_wrapper"
 
     # Compile the function string
     compiled_func = compile(func_str, '<string>', 'exec')
@@ -106,7 +60,7 @@ def function_wrapper_factory(function, param_names):
     exec(compiled_func, globals(), local_vars)
     
     # Get a reference to the dynamically created function
-    dynamic_function_wrapper = local_vars['function_wrapper']
+    dynamic_function_wrapper = local_vars['function_double_wrapper']
     
     return dynamic_function_wrapper
     
@@ -155,28 +109,28 @@ class BioCircuit:
         # compute the minimal alphabet to represent the seq_list
         self._alphabet = compute_alphabet(seq_list)
         # set the alphabet to be able to call SeqWrapper.maxInteger()
-        SeqWrapper.setAlphabet(self._alphabet)
+        #SeqWrapper.setAlphabet(self._alphabet)
 
         # Create the circuit integer seq_list from the seq
         # Use SeqWrapper.maxInteger() to know the maximum integer that can be
         # used to represent a character in FheSeq obects        
-        inputset = [np.random.randint(0, SeqWrapper.maxInteger()+1, size=(len(seq),))
-                    for _ in range (300)]
+        inputset = [tuple([np.random.randint(0, SeqWrapper.maxInteger()+1, size=(len(seq),))
+                            for seq in seq_list]) for _ in range (300)]
 
         # Wrap the function so that it can use any number of MutableSeq objects in inputs and a MutableSeq/Seq in output
         # get parameter names from encryption directory
         param_names = list(encryption.keys())
-        wrapped_function = function_wrapper_factory(function, param_names)
+        wrapped_function = function_wrapper_factory(param_names)(function)
 
         # compile the circuit   
-        compiler = fhe.Compiler(wrapped_function, encryption)
+        compiler = fhe.Compiler(wrapped_function, encryption)    
         self._circuit = compiler.compile(
             inputset = inputset,
             configuration = configuration,
             **kwargs,
-        )
+        )        
         # reset the alphabet in case we use another circuit before running this one
-        SeqWrapper.resetAlphabet()
+        #SeqWrapper.resetAlphabet()
 
     def encrypt(self, *seq_list):
         # convert sequences to integer representation

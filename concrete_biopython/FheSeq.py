@@ -68,13 +68,13 @@ class _FheSeqAbstractBaseClass(ABC):
                 self._data = fhe.zeros(0) 
         elif isinstance(data, str):
             # convert str to clear integers
-            self.data = SeqWrapper.toIntegers(data)
+            self._data = SeqWrapper.toIntegers(data)
         elif isinstance(data, np.ndarray):
             # check array type
             if data.dtype != np.int:
                 raise ValueError("data is a ndarray but has not integerer dtype")
             # store clear integers
-            self.data = data.copy()
+            self._data = data.copy()
         else:
             raise TypeError(
                 "data should be either of these types: \n\
