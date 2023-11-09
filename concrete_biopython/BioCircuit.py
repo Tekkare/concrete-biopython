@@ -7,30 +7,28 @@ from concrete_biopython.FheSeq import FheSeq, FheMutableSeq
 from concrete_biopython.SeqWrapper import SeqWrapper
 
 
-# Compute the minimal alphabet to represent a Seq object
-def compute_alphabet(seq_list):
-    # Use a set to store unique letters
-    unique_letters = set()
-    for seq in seq_list:
-        # update with every seq letters
-        unique_letters.update(str(seq))
-    # Convert the set of unique letters back to a sorted string
-    return ''.join(sorted(unique_letters))
-
-
-# Wrap a function so that it can use MutableSeq objects in inputs and a MutableSeq/Seq in output
-def function_wrapper_factory(param_names):
+def function_double_wrapper_factory(param_names):
+    """
+    Our goal is to get a function that can use MutableSeq objects in inputs and a MutableSeq/Seq in output
+    As the number of input arrays is variable, and as the compiler needs a function with names to compile,
+    we need to create this function dynamically during the execution, when we know the names and number of
+    array parameters.
+    To this purpose, we will dynamically create a function function_double_wrapper from string, that given
+    a function process_sequence (the sequence processing function) as parameter, will output a function function_wrapper
+    taking the correct number of input arrays, convert them to MutableSeq objects, and apply process_sequence to them
+    """
 
     """
-    Create a dynamic version of the above double function wrapper
-    than can take named parameters, the ones from encryption:
+    Create a dynamic version of the above double function wrapper that can take named parameters (the ones from encryption),
+    and output a function wrapper that takes a function process_sequence, which will in turn apply a function process_sequence
+    onto FheMutableSeq objects made from the arrays in parameter
     
-    def function_double_wrapper(function):
+    def function_double_wrapper(process_sequence):
     
         def function_wrapper(seq1, seq2, ...):
             fhe_arrays = [seq1, seq2, ...]
             fhe_mutableSeqs = [ FheMutableSeq(fhe_seq) for fhe_seq in fhe_arrays ]
-            output = function(*fhe_mutableSeqs)
+            output = process_sequence(*fhe_mutableSeqs)
             # if the output of the function is a FheSeq or FheMutableSeq, convert it back to an array
             if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):
                 output = output.toArray()
@@ -40,11 +38,11 @@ def function_wrapper_factory(param_names):
     """
 
     # Create the function definition as a string
-    func_str =  "def function_double_wrapper(function):\n"
+    func_str =  "def function_double_wrapper(process_sequence):\n"
     func_str += f"    def function_wrapper({', '.join(param_names)}):\n"
     func_str += f"        fhe_arrays = [{', '.join(param_names)}]\n"
     func_str +=  "        fhe_mutableSeqs = [ FheMutableSeq(fhe_seq) for fhe_seq in fhe_arrays ]\n"
-    func_str +=  "        output = function(*fhe_mutableSeqs)\n"
+    func_str +=  "        output = process_sequence(*fhe_mutableSeqs)\n"
     func_str +=  "        if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):\n"
     func_str +=  "            output = output.toArray()\n"
     func_str +=  "        return output\n"
@@ -75,6 +73,7 @@ class BioCircuit:
                  encryption,
                  seq_list,
                  configuration,
+                 alphabet=None,
                  **kwargs
                 ):
         """
@@ -91,7 +90,7 @@ class BioCircuit:
 
         # verify the seq_list types
         for seq in seq_list:
-            if not isinstance(seq, Seq) or isinstance(seq, MutableSeq):
+            if not (isinstance(seq, Seq) or isinstance(seq, MutableSeq)):
                 raise ValueError("Sequence must be of type Seq or MutableSeq")        
 
         # verify the encryption
@@ -101,15 +100,12 @@ class BioCircuit:
                 raise ValueError(f"Invalid value in the dictionary for key {key}: {value}\n\
                     should be either \"encrypted\" or \"clear\"")    
 
-        # # concatenate the seq_list into one long Seq
-        # seq, _ = concat_sequences(seq_list)
-        # # compute the minimal alphabet to represent the seq_list
-        # self._alphabet = compute_alphabet(seq)
+        # set the alphabet, if any
+        self._alphabet = alphabet
 
-        # compute the minimal alphabet to represent the seq_list
-        self._alphabet = compute_alphabet(seq_list)
-        # set the alphabet to be able to call SeqWrapper.maxInteger()
-        #SeqWrapper.setAlphabet(self._alphabet)
+        if self._alphabet is not None:
+            # set the alphabet if any to be able to call SeqWrapper.maxInteger()
+            SeqWrapper.setAlphabet(self._alphabet)
 
         # Create the circuit integer seq_list from the seq
         # Use SeqWrapper.maxInteger() to know the maximum integer that can be
@@ -120,7 +116,7 @@ class BioCircuit:
         # Wrap the function so that it can use any number of MutableSeq objects in inputs and a MutableSeq/Seq in output
         # get parameter names from encryption directory
         param_names = list(encryption.keys())
-        wrapped_function = function_wrapper_factory(param_names)(function)
+        wrapped_function = function_double_wrapper_factory(param_names)(function)
 
         # compile the circuit   
         compiler = fhe.Compiler(wrapped_function, encryption)    
@@ -129,35 +125,82 @@ class BioCircuit:
             configuration = configuration,
             **kwargs,
         )        
-        # reset the alphabet in case we use another circuit before running this one
-        #SeqWrapper.resetAlphabet()
+        if self._alphabet is not None:
+            # reset the alphabet if any in case we use another circuit before running this one
+            SeqWrapper.resetAlphabet()
 
     def encrypt(self, *seq_list):
+        """
+        Encrypt a list of Seq or MutableSeq objects
+        """
+        if self._alphabet is not None:
+            # set the alphabet before calling SeqWrapper.toIntegers
+            SeqWrapper.setAlphabet(self._alphabet)
         # convert sequences to integer representation
         integer_list = [];
         for seq in seq_list:
-            if not isinstance(seq, Seq) or isinstance(seq, MutableSeq):
-                raise ValueError("All sequences must be of type Bio.Seq.Seq or Bio.Seq.MutableSeq")
+            if not (isinstance(seq, Seq) or isinstance(seq, MutableSeq)):
+                raise ValueError("All sequences must be of type Seq or MutableSeq")
             integer_list.append( SeqWrapper.toIntegers(seq) )
         # return the list of sequences as integers encrypted in FHE
         encrypted_input = self._circuit.encrypt(*integer_list)
+
+        if self._alphabet is not None:
+            # reset the alphabet in case another circuit is used before running this one
+            SeqWrapper.resetAlphabet()
+
         return encrypted_input
 
     def run(self, encrypted_input):
-        # set the alphabet for improved computation performances
-        SeqWrapper.setAlphabet(self._alphabet)
+        """
+        Run the circuit on encrypted input
+        """
+        if self._alphabet is not None:
+            # set the alphabet for improved computation performances
+            SeqWrapper.setAlphabet(self._alphabet)
+        # run the circuit on encrypted inputs
         encrypted_output = self._circuit.run(encrypted_input)
-        # always reset the alphabet after running the circuit
-        SeqWrapper.resetAlphabet()
+        if self._alphabet is not None:
+            # reset the alphabet after running the circuit
+            SeqWrapper.resetAlphabet()
         return encrypted_output
 
     def decrypt(self, encrypted_output):
-        return self._circuit.decrypt(encrypted_output)
+        """
+        Decrypt an convert back to a sequence
+        """        
+        if self._alphabet is not None:
+            # set the alphabet for improved computation performances
+            SeqWrapper.setAlphabet(self._alphabet)
+        # decrypt and convert back to a sequence
+        res = SeqWrapper.toSeq(self._circuit.decrypt(encrypted_output))
+        if self._alphabet is not None:
+            # reset the alphabet after running the circuit
+            SeqWrapper.resetAlphabet()
+        return res
+
+    def decrypt_as_integers(self, encrypted_output):
+        """
+        Decrypt without converting back to a sequence and keeping the result as an array of integers
+        """
+        return self._circuit.decrypt(encrypted_output)        
 
     def encrypt_run_decrypt(self, *seq_list):
+        """
+        Encrypt, run and decrypt at once
+        """
+        encrypted_input = self.encrypt(*seq_list)
+        encrypted_output = self.run(encrypted_input)
+        decrypted_result = self.decrypt(encrypted_output)
+        return decrypted_result
+
+    def encrypt_run_decrypt_as_intgers(self, *seq_list):
+        """
+        Encrypt, run and decrypt as integers at once
+        """
         encrypted_input = self._circuit.encrypt(*seq_list)
         encrypted_output = self._circuit.run(encrypted_input)
-        decrypted_result = self._circuit.decrypt(encrypted_output)
-        return decrypted_result
+        decrypted_result = self._circuit.decrypt_as_integers(encrypted_output)
+        return decrypted_result        
 
 
