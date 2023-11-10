@@ -71,7 +71,7 @@ class BioCircuit:
     def __init__(self,
                  function,
                  encryption,
-                 seq_list,
+                 len_seqs,
                  configuration,
                  alphabet=None,
                  **kwargs
@@ -82,16 +82,10 @@ class BioCircuit:
         - `function` a function taking FheMutableSeq objects
         - `encryption` a dictionnary with string keys and values equal to
           "encrypted" or "clear" as required to compile a circuit
-        - `seq_list` a list of Seq inputs that can be used by the circuit, this is
-          required to compute the alphabet and the Seq input lenghts
+        - `len_seqs` a list of lengths of the Seq inputs that can be used by the circuit
         - `configuration` the configuration for the compiler
         - `**kwargs` any other named arguments for the compiler
         """
-
-        # verify the seq_list types
-        for seq in seq_list:
-            if not (isinstance(seq, Seq) or isinstance(seq, MutableSeq)):
-                raise ValueError("Sequence must be of type Seq or MutableSeq")        
 
         # verify the encryption
         for key in encryption.keys():
@@ -107,11 +101,11 @@ class BioCircuit:
             # set the alphabet if any to be able to call SeqWrapper.maxInteger()
             SeqWrapper.setAlphabet(self._alphabet)
 
-        # Create the circuit integer seq_list from the seq
+        # Create the circuit inputset from the seq lengths and the maximum integer
         # Use SeqWrapper.maxInteger() to know the maximum integer that can be
         # used to represent a character in FheSeq obects        
-        inputset = [tuple([np.random.randint(0, SeqWrapper.maxInteger()+1, size=(len(seq),))
-                            for seq in seq_list]) for _ in range (300)]
+        inputset = [tuple([np.random.randint(0, SeqWrapper.maxInteger()+1, size=(len_seq,))
+                            for len_seq in len_seqs]) for _ in range (300)]
 
         # Wrap the function so that it can use any number of MutableSeq objects in inputs and a MutableSeq/Seq in output
         # get parameter names from encryption directory
@@ -129,6 +123,8 @@ class BioCircuit:
             # reset the alphabet if any in case we use another circuit before running this one
             SeqWrapper.resetAlphabet()
 
+        self._len_seqs = len_seqs
+
     def encrypt(self, *seq_list):
         """
         Encrypt a list of Seq or MutableSeq objects
@@ -138,9 +134,12 @@ class BioCircuit:
             SeqWrapper.setAlphabet(self._alphabet)
         # convert sequences to integer representation
         integer_list = [];
-        for seq in seq_list:
+        for i in range(0,len(seq_list)):
+            seq = seq_list[i]
             if not (isinstance(seq, Seq) or isinstance(seq, MutableSeq)):
                 raise ValueError("All sequences must be of type Seq or MutableSeq")
+            if not len(seq) == self._len_seqs[i]:
+                raise ValueError(f"Sequence number {i} has not the right length. Expected {self._len_seqs[i]}, got {len(seq)}")
             integer_list.append( SeqWrapper.toIntegers(seq) )
         # return the list of sequences as integers encrypted in FHE
         encrypted_input = self._circuit.encrypt(*integer_list)

@@ -22,7 +22,7 @@ class SeqWrapper():
     """
 
     # All letters of the default alphabet
-    _DEFAULT_ALPHABET = '\0*ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    _DEFAULT_ALPHABET = '\0!\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\t\n'
 
     # Initialize letter related variables 
     LETTERS = ''.join((sorted(set(_DEFAULT_ALPHABET))))
