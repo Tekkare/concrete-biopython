@@ -4,15 +4,13 @@ from Bio.Seq import Seq, MutableSeq
 
 import sys, os, time
 sys.path.append(os.getcwd())
-from concrete_biopython.FheSeq import FheSeq, FheMutableSeq
-from concrete_biopython.SeqWrapper import SeqWrapper
+from concrete_biopython.FheSeq import FheSeqMaker, Alphabets, FheSeq, FheMutableSeq
 from concrete_biopython.BioCircuit import BioCircuit
-
 
 
 def process_sequence(seq1, seq2):
     """
-    Check wether two elements are identical
+    Check wether two sequences are identical
     This is a dummy function for testing, we will redefine it for each application later
     """
     return seq1[0]==seq2[1]
@@ -36,15 +34,15 @@ def compute_fhe_output(seq_list, process_seq, description, res=False):
         dataflow_parallelize=False,
     )  
 
-    
     # Create a BioCircuit wrapped circuit
     circuit = BioCircuit(
         function=process_seq,
         len_seqs=[len(seq) for seq in seq_list],
+        fhe_seq_maker = FheSeqMaker(Alphabets.DNA_RNA),
         configuration=configuration,
     )
 
-    output = circuit.encrypt_run_decrypt_as_integers(*seq_list)
+    output = circuit.encrypt_run_decrypt(*seq_list)
     
     print('==> Result :', output, '\n')
 
