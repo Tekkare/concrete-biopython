@@ -39,7 +39,7 @@ class SeqWrapper():
         if not isinstance(alphabet, str):
             raise ValueError('alphabet must be a string')
         if not '\0' in alphabet:
-            alphabet += '\0'
+            alphabet = "\0" + alphabet
         SeqWrapper.LETTERS = ''.join((sorted(set(alphabet))))
         SeqWrapper.LETTERS_TO_INTEGERS = {letter: index for index, letter in enumerate(SeqWrapper.LETTERS)}
         SeqWrapper.INTEGERS_TO_LETTERS = {index: letter for index, letter in enumerate(SeqWrapper.LETTERS)}

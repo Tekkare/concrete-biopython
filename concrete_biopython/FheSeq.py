@@ -3,11 +3,16 @@ from concrete import fhe
 import numpy as np
 import numbers
 
+from Bio.Seq import Seq, MutableSeq
+
 from concrete_biopython.SeqWrapper import SeqWrapper
 
 Tracer = fhe.tracing.tracer.Tracer
 
 _NOT_IMPLEMENTED_FHE =  Exception('This function is not compatible with FHE')
+
+def boolean_multiplication(value, boolean):
+    return fhe.univariate(lambda packing: np.where(packing % 2, packing // 2, 0))(value * 2 + boolean)
 
 class _FheSeqAbstractBaseClass(ABC):
     """
@@ -66,15 +71,16 @@ class _FheSeqAbstractBaseClass(ABC):
                 self._data = data._data[:].reshape(1)  # take a copy
             else:
                 self._data = fhe.zeros(0) 
-        elif isinstance(data, str):
-            # convert str to clear integers
-            self._data = SeqWrapper.toIntegers(data)
-        elif isinstance(data, np.ndarray):
-            # check array type
-            if data.dtype != np.int:
-                raise ValueError("data is a ndarray but has not integerer dtype")
-            # store clear integers
-            self._data = data.copy()
+        # TODO: add possibility for clear data, when concrete allows operations on clear Tracers
+        # elif isinstance(data, str):
+        #     # convert str to clear integers
+        #     self._data = SeqWrapper.toIntegers(data)
+        # elif isinstance(data, np.ndarray):
+        #     # check array type
+        #     if data.dtype != np.int:
+        #         raise ValueError("data is a ndarray but has not integer dtype")
+        #     # store clear integers
+        #     self._data = data.copy()
         else:
             raise TypeError(
                 "data should be either of these types: \n\
@@ -104,6 +110,7 @@ class _FheSeqAbstractBaseClass(ABC):
         if len(self) != other.size:
             return fhe.zero() # return False if the lengths are different
         else:
+            #return np.sum(self._data == other) == len(self)
             return (len(self) - np.sum(self._data == other))==0
 
 
@@ -196,6 +203,7 @@ class _FheSeqAbstractBaseClass(ABC):
                 # If single encrypted index
                 index = (index + len(self)) % len(self) # in case the index is negative
                 return np.sum(self._data*(np.arange(len(self))==index))
+                #return np.sum( boolean_multiplication(self._data, np.arange(len(self))==index))
             else:
                 raise NotImplementedError
         else:

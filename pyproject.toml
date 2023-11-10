@@ -12,6 +12,7 @@ biopython = "^1.81"
 ipykernel = "^6.23.1"
 matplotlib = "^3.7.1"
 concrete-python = "^2.2.0"
+numpy = "^1.26.1"
 
 [build-system]
 requires = ["poetry-core"]
