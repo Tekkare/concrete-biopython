@@ -6,8 +6,9 @@
 
 - `FheSeq` class following `Bio.Seq`
 - `FheMutableSeq` class following `Bio.MutableSeq`
-- `SeqWrapper` class interfacing `Bio.Seq`
+- `FheSeqMaker` class interfacing `Bio.Seq`
   with `FheSeq`, and vice versa.
+- `BioCircuit` class that wraps a concrete circuit and takes sequences as input
 
 ## Installation
 
@@ -40,7 +41,7 @@ python -m ipykernel install --user --name=concrete-biopython
 Please refer to the tutorial in `tutorial/tutorial.ipynb` for usage explanations.
 
 **Note**: `FheSeq` objects are created from integer arrays within a FHE circuit. They work on encrypted arrays in the same way `Bio.Seq` objects work on clear string sequences.  
-In your app, in order to go from a `Bio.Seq` object to a `FheSeq` object and vice versa, you need to use the interfacing class `SeqWrapper` as explained in the tutorial.
+In your app, in order to go from a `Bio.Seq` object to a `FheSeq` object and vice versa, you need to use the interfacing class `FheSeqMaker` as explained in the tutorial. You can also simply use a `BioCircuit` which will make the interfacing internally.
 
 To run an app `./my_app.py`, use:
 
