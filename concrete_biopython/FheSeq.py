@@ -23,12 +23,15 @@ class Alphabets():
     DIGITS = "\0"+"0123456789"
 
 
-class FheSeqMaker():
+class SeqInterface():
     """
     A factory class to create FheSeq objects that are interfaced to Concrete-BioPython 
     """
 
     def __init__(self, alphabet=None):
+
+        if not '\0' in alphabet:
+            alphabet = "\0" + alphabet
 
         # Initialize letter related variables 
         self._letters = ''.join((sorted(set(alphabet or Alphabets.ASCII))))
@@ -62,6 +65,18 @@ class FheSeqMaker():
         Map integer array to MutableSeq object
         """        
         return MutableSeq(self.array_to_str(array))
+
+    def letter_to_integer(self, letter):
+        """
+        Convert a letter to an integer
+        """
+        return self._letters_to_integers[letter]
+
+    def integer_to_letter(self, integer):
+        """
+        Convert an integer to a letter
+        """
+        return self._integers_to_letters[integer]        
 
     def to_integers(self, data):
         """
@@ -101,7 +116,7 @@ class FheSeqMaker():
         try:
             integer_mapping = { self._letters_to_integers[letter]: self._letters_to_integers[letter_mapping[letter]] for letter in letter_mapping.keys() }
         except KeyError as e: # if the alphabet was changed and does not contain the right letters anymore
-            raise KeyError('FheSeqMaker alphabet has been set without the required letter:' + str(e))
+            raise KeyError('SeqInterface alphabet has been set without the required letter:' + str(e))
 
         return [ integer_mapping[i] if i in integer_mapping else 0 for i in range(len(self._letters)) ]
 
@@ -165,19 +180,19 @@ class FheSeqMaker():
         try:
             return [self._letters_to_integers[letter] for letter in codons_translated]    
         except KeyError as e: # if the alphabet was changed and does not contain the right letters anymore
-            raise KeyError('FheSeqMaker alphabet has been set without the required letter:' + str(e))
+            raise KeyError('SeqInterface alphabet has been set without the required letter:' + str(e))
         
     def FheSeq_from(self, data):
         """
-        Make a FheSeq with self as FheSeqMaker
+        Make a FheSeq with self as SeqInterface
         """
-        return FheSeq(data, fhe_seq_maker=self)
+        return FheSeq(data, seq_interface=self)
 
     def FheMutableSeq_from(self, data):
         """
-        Make a FheSeq with self as FheSeqMaker
+        Make a FheSeq with self as SeqInterface
         """
-        return FheMutableSeq(data, fhe_seq_maker=self)
+        return FheMutableSeq(data, seq_interface=self)
 
 
 class _FheSeqAbstractBaseClass(ABC):
@@ -209,7 +224,7 @@ class _FheSeqAbstractBaseClass(ABC):
 
     """
 
-    def __init__(self, data, fhe_seq_maker, length=None):
+    def __init__(self, data, seq_interface, length=None):
         if data is None:
             if length is None:
                 raise ValueError("length must not be None if data is None")
@@ -240,7 +255,7 @@ class _FheSeqAbstractBaseClass(ABC):
         # TODO: add possibility for clear data, when concrete allows operations on clear Tracers
         # elif isinstance(data, str):
         #     # convert str to clear integers
-        #     self._data = self._fhe_seq_maker.to_integers(data)
+        #     self._data = self._seq_interface.to_integers(data)
         # elif isinstance(data, np.ndarray):
         #     # check array type
         #     if data.dtype != np.int:
@@ -257,13 +272,21 @@ class _FheSeqAbstractBaseClass(ABC):
                 "
             )   
 
-        if fhe_seq_maker is None:
-            raise ValueError("fhe_seq_maker is None")
+        if seq_interface is None:
+            raise ValueError("seq_interface is None")
 
-        self._fhe_seq_maker = fhe_seq_maker
+        self._seq_interface = seq_interface
 
+    def get_seq_interface(self):
+        """
+        seq_interface getter
+        """
+        return self._seq_interface
 
     def to_array(self):
+        """
+        Unwraps the array
+        """
         return self._data
 
     def __eq__(self, other):
@@ -379,15 +402,15 @@ class _FheSeqAbstractBaseClass(ABC):
                 raise NotImplementedError
         else:
             # Return the (sub)sequence as another Seq/MutableSeq object
-            return self.__class__(self._data[index], self._fhe_seq_maker)
+            return self.__class__(self._data[index], self._seq_interface)
 
     def __add__(self, other):
         """Add a sequence or array to this sequence.
         """
         if isinstance(other, _FheSeqAbstractBaseClass):
-            return self.__class__(np.concatenate((self._data, other._data), axis=0), self._fhe_seq_maker) # np.concatenate will deep copy array
+            return self.__class__(np.concatenate((self._data, other._data), axis=0), self._seq_interface) # np.concatenate will deep copy array
         elif isinstance(other, Tracer):
-            return self.__class__(np.concatenate((self._data, other), axis=0), self._fhe_seq_maker)
+            return self.__class__(np.concatenate((self._data, other), axis=0), self._seq_interface)
         else:
             raise NotImplementedError
 
@@ -472,17 +495,17 @@ class _FheSeqAbstractBaseClass(ABC):
             )
 
         # first of all, reduce the integers of letters 'ACGU' (and T treated as a U) to 0,1,2,3
-        translationReductionTable = fhe.LookupTable(self._fhe_seq_maker.get_translationReductionTable())
+        translationReductionTable = fhe.LookupTable(self._seq_interface.get_translationReductionTable())
         reduced_integers = translationReductionTable[self._data]
 
         # compute codon indices from first, second and third letters
         codon_indices = reduced_integers[0::3]*16 + reduced_integers[1::3]*4 + reduced_integers[2::3]
 
         # apply translation of the codons by their index in the translation table
-        translationTable = fhe.LookupTable(self._fhe_seq_maker.get_translationTable(table))        
+        translationTable = fhe.LookupTable(self._seq_interface.get_translationTable(table))        
         protein_seq = translationTable[codon_indices]
 
-        return self.__class__(protein_seq, self._fhe_seq_maker)
+        return self.__class__(protein_seq, self._seq_interface)
 
 
     def _complement(self, inplace=False):
@@ -496,7 +519,7 @@ class _FheSeqAbstractBaseClass(ABC):
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        DNAcomplementTable = fhe.LookupTable(self._fhe_seq_maker.get_DNA_complementTable()) 
+        DNAcomplementTable = fhe.LookupTable(self._seq_interface.get_DNA_complementTable()) 
         complement_seq = DNAcomplementTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
@@ -504,7 +527,7 @@ class _FheSeqAbstractBaseClass(ABC):
             self._data = complement_seq
             return self
         else:
-            return self.__class__(complement_seq, self._fhe_seq_maker)
+            return self.__class__(complement_seq, self._seq_interface)
 
     def _complement_rna(self, inplace=False):
         """Return the complement as an RNA sequence.
@@ -514,7 +537,7 @@ class _FheSeqAbstractBaseClass(ABC):
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
         ``complement_rna`` is called on a ``Seq`` object with ``inplace=True``.
         """
-        RNAcomplementTable = fhe.LookupTable(self._fhe_seq_maker.get_RNA_complementTable()) 
+        RNAcomplementTable = fhe.LookupTable(self._seq_interface.get_RNA_complementTable()) 
         complement_seq = RNAcomplementTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
@@ -522,7 +545,7 @@ class _FheSeqAbstractBaseClass(ABC):
             self._data = complement_seq
             return self
         else:
-            return self.__class__(complement_seq, self._fhe_seq_maker)
+            return self.__class__(complement_seq, self._seq_interface)
 
     def _reverse_complement(self, inplace=False):
         """Return the reverse complement as a DNA sequence.
@@ -573,7 +596,7 @@ class _FheSeqAbstractBaseClass(ABC):
         T for Threonine with U for Selenocysteine, which has no
         biologically plausible rational.
         """
-        transcriptionTable = fhe.LookupTable(self._fhe_seq_maker.get_transcriptionTable()) 
+        transcriptionTable = fhe.LookupTable(self._seq_interface.get_transcriptionTable()) 
         transcribed_seq = transcriptionTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
@@ -581,7 +604,7 @@ class _FheSeqAbstractBaseClass(ABC):
             self._data = transcribed_seq
             return self
         else:
-            return self.__class__(transcribed_seq, self._fhe_seq_maker)
+            return self.__class__(transcribed_seq, self._seq_interface)
 
     def _back_transcribe(self, inplace=False):
         """Return the DNA sequence from an RNA sequence by creating a new Seq object.
@@ -598,7 +621,7 @@ class _FheSeqAbstractBaseClass(ABC):
         Trying to back-transcribe a protein sequence will replace any U for
         Selenocysteine with T for Threonine, which is biologically meaningless.
         """
-        backTranscriptionTable = fhe.LookupTable(self._fhe_seq_maker.get_back_transcriptionTable())
+        backTranscriptionTable = fhe.LookupTable(self._seq_interface.get_back_transcriptionTable())
         back_transcribed_seq = backTranscriptionTable[self._data]
         if inplace:
             if self.__class__ == FheSeq:
@@ -606,7 +629,7 @@ class _FheSeqAbstractBaseClass(ABC):
             self._data = back_transcribed_seq
             return self
         else:
-            return self.__class__(back_transcribed_seq, self._fhe_seq_maker)
+            return self.__class__(back_transcribed_seq, self._seq_interface)
 
     def join(self, other):
         """Return a merge of the sequences in other, spaced by the sequence from self.
@@ -638,7 +661,7 @@ class _FheSeqAbstractBaseClass(ABC):
         for i in range(1,len(joindata)):
             concatenation = np.concatenate((concatenation,self._data,joindata[i]),axis=0)
 
-        return self.__class__(concatenation, self._fhe_seq_maker)
+        return self.__class__(concatenation, self._seq_interface)
 
 
 class FheSeq(_FheSeqAbstractBaseClass):
@@ -654,8 +677,8 @@ class FheSeq(_FheSeqAbstractBaseClass):
     __hash__
 
     """
-    def __init__(self, data, fhe_seq_maker, length=None):
-        super().__init__(data, fhe_seq_maker, length=length)
+    def __init__(self, data, seq_interface, length=None):
+        super().__init__(data, seq_interface, length=length)
 
     def complement(self):
         return super()._complement(False)
@@ -684,8 +707,8 @@ class FheMutableSeq(_FheSeqAbstractBaseClass):
 
     This method from Bio.Seq.FheMutableSeq that cannot be implemented in fhe: remove
     """
-    def __init__(self, data, fhe_seq_maker, length=None):
-        super().__init__(data, fhe_seq_maker, length=length)
+    def __init__(self, data, seq_interface, length=None):
+        super().__init__(data, seq_interface, length=length)
 
     def reverse(self):
         s=len(self)

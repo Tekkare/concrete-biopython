@@ -5,7 +5,7 @@ import time
 
 from Bio.Seq import Seq, MutableSeq
 
-from concrete_biopython.FheSeq import FheSeqMaker, FheSeq, FheMutableSeq
+from concrete_biopython.FheSeq import SeqInterface, FheSeq, FheMutableSeq
 
 def measure_time(function, descripton, *inputs):
     """
@@ -33,11 +33,11 @@ def function_double_wrapper_factory(param_names):
     and output a function wrapper that takes a function process_sequence, which will in turn apply a function process_sequence
     onto FheMutableSeq objects made from the arrays in parameter
     
-    def function_double_wrapper(process_sequence, fhe_seq_maker):
+    def function_double_wrapper(process_sequence, seq_interface):
     
         def function_wrapper(seq1, seq2, ...):
             fhe_arrays = [seq1, seq2, ...]
-            fhe_mutableSeqs = [ fhe_seq_maker.FheMutableSeq_from(fhe_arr) for fhe_arr in fhe_arrays ]
+            fhe_mutableSeqs = [ seq_interface.FheMutableSeq_from(fhe_arr) for fhe_arr in fhe_arrays ]
             output = process_sequence(*fhe_mutableSeqs)
             # if the output of the function is a FheSeq or FheMutableSeq, convert it back to an array
             if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):
@@ -51,10 +51,10 @@ def function_double_wrapper_factory(param_names):
     """
 
     # Create the function definition as a string
-    func_str =  "def function_double_wrapper(process_sequence, fhe_seq_maker):\n"
+    func_str =  "def function_double_wrapper(process_sequence, seq_interface):\n"
     func_str += f"    def function_wrapper({', '.join(param_names)}):\n"
     func_str += f"        fhe_arrays = [{', '.join(param_names)}]\n"
-    func_str +=  "        fhe_mutableSeqs = [ fhe_seq_maker.FheMutableSeq_from(fhe_arr) for fhe_arr in fhe_arrays ]\n"
+    func_str +=  "        fhe_mutableSeqs = [ seq_interface.FheMutableSeq_from(fhe_arr) for fhe_arr in fhe_arrays ]\n"
     func_str +=  "        output = process_sequence(*fhe_mutableSeqs)\n"
     func_str +=  "        if isinstance(output, FheMutableSeq) or isinstance(output, FheSeq):\n"
     func_str +=  "            output = output.to_array()\n"
@@ -94,7 +94,7 @@ class BioCircuit:
                  function,
                  #encryption,
                  len_seqs,
-                 fhe_seq_maker,
+                 seq_interface,
                  configuration,                 
                  seq_output = False,
                  show_timing=True,
@@ -105,7 +105,7 @@ class BioCircuit:
         
         - `function` a function taking FheMutableSeq objects
         - `len_seqs` a list of lengths of the Seq inputs that can be used by the circuit
-        - `fhe_seq_maker` a FheSeqMaker object to use for creating FheSeq objects
+        - `seq_interface` a SeqInterface object to use for creating FheSeq objects
         - `configuration` the configuration for the compiler
         - `seq_output` wether outputs are to be converted to Seq objects
         - `show_timing` wether to show timing or not
@@ -118,7 +118,7 @@ class BioCircuit:
         self._len_seqs = len_seqs
         self._show_timing = show_timing        
         self._seq_output = seq_output        
-        self._fhe_seq_maker = fhe_seq_maker        
+        self._seq_interface = seq_interface        
 
         # create an encryption dictionnary from the number of input sequences, where everything is encrypted
         encryption = { "seq" + str(i): "encrypted" for i in range(1,len(len_seqs)+1) }
@@ -131,15 +131,15 @@ class BioCircuit:
         #             should be either \"encrypted\" or \"clear\"")    
 
         # Create the circuit inputset from the seq lengths and the maximum integer
-        # Use fhe_seq_maker.max_integer() to know the maximum integer that can be
+        # Use seq_interface.max_integer() to know the maximum integer that can be
         # used to represent a character in FheSeq obects        
-        inputset = [tuple([np.random.randint(0, fhe_seq_maker.max_integer()+1, size=(len_seq,))
+        inputset = [tuple([np.random.randint(0, seq_interface.max_integer()+1, size=(len_seq,))
                             for len_seq in len_seqs]) for _ in range (300)]
 
         # Wrap the function so that it can use any number of MutableSeq objects in inputs and a MutableSeq/Seq in output
         # get parameter names from encryption directory        
         param_names = list(encryption.keys())
-        wrapped_function = function_double_wrapper_factory(param_names)(function, fhe_seq_maker)
+        wrapped_function = function_double_wrapper_factory(param_names)(function, seq_interface)
 
         # compile the circuit   
         compiler = fhe.Compiler(wrapped_function, encryption)
@@ -168,7 +168,7 @@ class BioCircuit:
                 raise ValueError("All sequences must be of type Seq or MutableSeq")
             if not len(seq) == self._len_seqs[i]:
                 raise ValueError(f"Sequence number {i} has not the right length. Expected {self._len_seqs[i]}, got {len(seq)}")
-            integer_list.append( self._fhe_seq_maker.to_integers(seq) )
+            integer_list.append( self._seq_interface.to_integers(seq) )
 
         if self._show_timing :
             encrypted_input = measure_time(self._circuit.encrypt, 'Encrypting ', *integer_list)
@@ -199,7 +199,7 @@ class BioCircuit:
 
         # decrypt and convert back to a sequence if required
         if self._seq_output:
-            res = self._fhe_seq_maker.array_to_Seq(res)
+            res = self._seq_interface.array_to_Seq(res)
 
         return res
 

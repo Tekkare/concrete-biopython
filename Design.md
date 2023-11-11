@@ -11,7 +11,7 @@ In the context of `concrete.fhe`, the native objects that undergo encryption and
 The chosen design approach, which has been implemented, revolves around ensuring seamless compatibility with `Biopython` on the unencrypted side, while leveraging a mirrored FHE version exclusively on the encrypted side. The unencrypted side makes use of `Biopython` for tasks like file loading, data preprocessing, and handling `Seq` sequence objects. Subsequently, these objects are transformed into arrays, encrypted, and used to initialize `concrete.biopython` objects such as `FheSeq`, which represent encrypted sequences. After FHE processing, a reverse process is employed for decryption.
 
 The key advantage of this approach lies in the clear distinction between unencrypted and encrypted processing, allowing for the maximum utilization of `Biopython` in the unencrypted part of the code.  
-~~However, a drawback is the need for manual object conversions to and from arrays when transitioning between unencrypted and encrypted states, accomplished using the `concrete.biopython.FheSeqMaker` class, as detailed in the tutorial.~~  
+~~However, a drawback is the need for manual object conversions to and from arrays when transitioning between unencrypted and encrypted states, accomplished using the `concrete.biopython.FheSeq.SeqInterface` class, as detailed in the tutorial.~~  
 What's more, the BioCircuit circuit wrapper can be used in a majority of usecases (when all inputs are sequences) and facilitates greatly the interfacing between `Seq`
  and `FheSeq`.
 
@@ -19,5 +19,5 @@ What's more, the BioCircuit circuit wrapper can be used in a majority of usecase
 ## Features
 
 - FheSeq functions: the implemented (and todo) functions of **FheSeq** classes are the same as those of **Biopython.Seq** classes (when they are possible to do in FHE).
-- Alphabet setting for bitwidth optimization: the FheSeqMaker object requires an alphabet specifying the minimal set of characters required, which improves the FHE speed.
+- Alphabet setting for bitwidth optimization: the SeqInterface object requires an alphabet specifying the minimal set of characters required, which improves the FHE speed.
 - BioCircuit: this concrete circuit wrapper could be reused for other projects.

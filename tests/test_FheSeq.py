@@ -7,10 +7,10 @@ from Bio.Seq import Seq, MutableSeq
 
 sys.path.append(os.getcwd())
 
-from concrete_biopython.FheSeq import FheSeqMaker, Alphabets, FheSeq, FheMutableSeq
+from concrete_biopython.FheSeq import SeqInterface, Alphabets, FheSeq, FheMutableSeq
 from concrete_biopython.BioCircuit import BioCircuit
 
-FHE_SEQ_MAKER = FheSeqMaker(Alphabets.PROTEINS)
+FHE_SEQ_MAKER = SeqInterface(Alphabets.PROTEINS)
 
 def make_circuit(function, seq_length, seq_output=False):
 
@@ -26,7 +26,7 @@ def make_circuit(function, seq_length, seq_output=False):
     circuit = BioCircuit(
         function=function,
         len_seqs=[seq_length, seq_length],
-        fhe_seq_maker = FHE_SEQ_MAKER,
+        seq_interface = FHE_SEQ_MAKER,
         configuration=configuration,
         seq_output=seq_output,
         show_timing=False,
@@ -137,8 +137,8 @@ class TestFheSeq(unittest.TestCase):
             return  x[y[1]]
         circuit = make_circuit(getitem_enc, 5)
         seq_abcde = Seq('ABCDE')
-        fhe_seq_maker = circuit._fhe_seq_maker
-        assert( circuit.encrypt_run_decrypt(seq1, seq_abcde) == fhe_seq_maker._letters_to_integers[seq1[fhe_seq_maker._letters_to_integers[seq_abcde[1]]]] )
+        seq_interface = circuit._seq_interface
+        assert( circuit.encrypt_run_decrypt(seq1, seq_abcde) == seq_interface._letters_to_integers[seq1[seq_interface._letters_to_integers[seq_abcde[1]]]] )
 
         ## multiple getitem
         def getitems(x,y):
@@ -175,7 +175,7 @@ class TestFheSeq(unittest.TestCase):
        
         def iter_(x,y):
             seq= x
-            seq2=FheMutableSeq(seq[0], x._fhe_seq_maker)
+            seq2=FheMutableSeq(seq[0], x._seq_interface)
             for c in seq:
                 seq2.append(c)
             return seq2.to_array()
