@@ -4,7 +4,7 @@ from Bio.Seq import Seq, MutableSeq
 
 import sys, os, time
 sys.path.append(os.getcwd())
-from concrete_biopython.FheSeq import FheSeqMaker, Alphabets, FheSeq, FheMutableSeq
+from concrete_biopython.FheSeq import SeqInterface, Alphabets, FheSeq, FheMutableSeq
 from concrete_biopython.BioCircuit import BioCircuit
 
 
@@ -38,7 +38,7 @@ def compute_fhe_output(seq_list, process_seq, description, res=False):
     circuit = BioCircuit(
         function=process_seq,
         len_seqs=[len(seq) for seq in seq_list],
-        fhe_seq_maker = FheSeqMaker(Alphabets.DNA_RNA),
+        seq_interface = SeqInterface(Alphabets.DNA_RNA),
         configuration=configuration,
     )
 
