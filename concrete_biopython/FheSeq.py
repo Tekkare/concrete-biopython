@@ -259,18 +259,20 @@ class _FheSeqAbstractBaseClass(ABC):
         # elif isinstance(data, np.ndarray):
         #     # check array type
         #     if data.dtype != np.int:
-        #         raise ValueError("data is a ndarray but has not integer dtype")
+        #         raise ValueError("data is an ndarray but doesn't have integer as it's dtype")
         #     # store clear integers
         #     self._data = data.copy()
         else:
             raise TypeError(
                 "data should be either of these types: \n\
-                concrete.fhe.tracing.tracer.Tracer\n\
-                _FheSeqAbstractBaseClass\n\
-                str\n\
-                numpy.ndarray (with dtype = np.int)\n\
+                \t- concrete.fhe.tracing.tracer.Tracer\n\
+                \t- _FheSeqAbstractBaseClass\n\
                 "
-            )   
+            )
+                # \t- str\n\
+                # \t- numpy.ndarray (with dtype = np.int)\n\
+                # "
+            #)   
 
         if seq_interface is None:
             raise ValueError("seq_interface is None")

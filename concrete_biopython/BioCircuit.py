@@ -95,7 +95,8 @@ class BioCircuit:
                  #encryption,
                  len_seqs,
                  seq_interface,
-                 configuration,                 
+                 configuration,
+                 inputset=None,              
                  seq_output = False,
                  show_timing=True,
                  **kwargs
@@ -107,6 +108,7 @@ class BioCircuit:
         - `len_seqs` a list of lengths of the Seq inputs that can be used by the circuit
         - `seq_interface` a SeqInterface object to use for creating FheSeq objects
         - `configuration` the configuration for the compiler
+        - `inputset` an optional custom inputset
         - `seq_output` wether outputs are to be converted to Seq objects
         - `show_timing` wether to show timing or not
         - `**kwargs` any other named arguments for the compiler
@@ -123,18 +125,21 @@ class BioCircuit:
         # create an encryption dictionnary from the number of input sequences, where everything is encrypted
         encryption = { "seq" + str(i): "encrypted" for i in range(1,len(len_seqs)+1) }
 
-        # # verify the encryption
-        # for key in encryption.keys():
-        #     value = encryption[key]
-        #     if value != "clear" and value != "encrypted":
-        #         raise ValueError(f"Invalid value in the dictionary for key {key}: {value}\n\
-        #             should be either \"encrypted\" or \"clear\"")    
-
         # Create the circuit inputset from the seq lengths and the maximum integer
         # Use seq_interface.max_integer() to know the maximum integer that can be
         # used to represent a character in FheSeq obects        
-        inputset = [tuple([np.random.randint(0, seq_interface.max_integer()+1, size=(len_seq,))
-                            for len_seq in len_seqs]) for _ in range (300)]
+        if inputset is not None:
+            # check correctness of inputset
+            if not ( isinstance(inputset, list)
+                and all(isinstance(item, tuple) and all(isinstance(seq_item, (Seq, MutableSeq))
+                    for seq_item in item) for item in inputset)):
+                raise ValueError("The inputset should be either None or with type List[Tuple[Union[Seq, MutableSeq]]]")
+
+            inputset = [tuple([seq_interface.to_integers(seq_item) for seq_item in item]) for item in inputset]
+
+        else:
+            inputset = [tuple([np.random.randint(0, seq_interface.max_integer()+1, size=(len_seq,))
+                                for len_seq in len_seqs]) for _ in range (300)]
 
         # Wrap the function so that it can use any number of MutableSeq objects in inputs and a MutableSeq/Seq in output
         # get parameter names from encryption directory        
