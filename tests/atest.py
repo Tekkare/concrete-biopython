@@ -10,11 +10,10 @@ from concrete_biopython.BioCircuit import BioCircuit
 
 def process_sequence(seq1, seq2):
     """
-    Check wether two sequences are identical
+    Check whether two sequences are identical
     This is a dummy function for testing, we will redefine it for each application later
     """
-    return seq1[0]==seq2[1]
-
+    return seq1==seq2
 
 def compute_fhe_output(seq_list, process_seq, description, res=False):
     """

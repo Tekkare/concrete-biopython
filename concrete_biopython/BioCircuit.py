@@ -179,16 +179,16 @@ class BioCircuit:
         # compile the circuit
         compiler = fhe.Compiler(wrapped_function, encryption)
 
-        compile_ = lambda _: compiler.compile(
+        compile_ = lambda: compiler.compile(
             inputset=inputset,
             configuration=configuration,
             **kwargs,
         )
 
         if show_timing:
-            self._circuit = measure_time(compile_, "Compiling ", None)
+            self._circuit = measure_time(compile_, "Compiling ")
         else:
-            self._circuit = compile_(None)
+            self._circuit = compile_()
 
     def encrypt(self, *seq_list):
         """

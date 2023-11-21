@@ -137,7 +137,7 @@ class TestFheSeq(unittest.TestCase):
             return  x[y[1]]
         circuit = make_circuit(getitem_enc, 5)
         seq_abcde = Seq('ABCDE')
-        seq_interface = circuit._seq_interface
+        seq_interface = circuit.interface
         assert( circuit.encrypt_run_decrypt(seq1, seq_abcde) == seq_interface._letters_to_integers[seq1[seq_interface._letters_to_integers[seq_abcde[1]]]] )
 
         ## multiple getitem
@@ -175,7 +175,7 @@ class TestFheSeq(unittest.TestCase):
        
         def iter_(x,y):
             seq= x
-            seq2=FheMutableSeq(seq[0], x._seq_interface)
+            seq2=FheMutableSeq(seq[0], x.interface)
             for c in seq:
                 seq2.append(c)
             return seq2.to_array()
@@ -355,7 +355,7 @@ class TestFheSeq(unittest.TestCase):
 
 
 
-unittest.main()
+#unittest.main()
 
-# suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_endswith')
-# unittest.TextTestRunner(verbosity=1).run(suite)
+suite = unittest.TestLoader().loadTestsFromName('test_FheSeq.TestFheSeq.test_complement_rna')
+unittest.TextTestRunner(verbosity=1).run(suite)

@@ -560,7 +560,7 @@ class _FheSeqAbstractBaseClass(ABC):
 
         return self.__class__(protein_seq, self._interface)
 
-    def _complement(self, inplace=False):
+    def complement(self, inplace=False):
         """Return the complement as an RNA sequence.
 
         Any T in the sequence is treated as a U
@@ -581,7 +581,7 @@ class _FheSeqAbstractBaseClass(ABC):
         else:
             return self.__class__(complement_seq, self._interface)
 
-    def _complement_rna(self, inplace=False):
+    def complement_rna(self, inplace=False):
         """Return the complement as an RNA sequence.
 
         Any T in the sequence is treated as a U
@@ -599,7 +599,7 @@ class _FheSeqAbstractBaseClass(ABC):
         else:
             return self.__class__(complement_seq, self._interface)
 
-    def _reverse_complement(self, inplace=False):
+    def reverse_complement(self, inplace=False):
         """Return the reverse complement as a DNA sequence.
 
         Any U in the sequence is treated as a T
@@ -610,14 +610,17 @@ class _FheSeqAbstractBaseClass(ABC):
         ``reverse_complement`` is called on a ``Seq`` object with
         ``inplace=True``.
         """
-        reverse_complement = self._complement(inplace)
-        if inplace:
-            if not isinstance(self, FheSeq):
+        if isinstance(self, FheSeq):
+            if inplace:
                 raise TypeError("Sequence is immutable")
+            reverse_complement = self.complement()
+        else:
+            reverse_complement = self.complement(inplace)
+
         reverse_complement._data[::-1] = reverse_complement._data
         return reverse_complement
 
-    def _reverse_complement_rna(self, inplace=False):
+    def reverse_complement_rna(self, inplace=False):
         """Return the reverse complement as an RNA sequence.
 
         The sequence is modified in-place and returned if inplace is True
@@ -626,14 +629,17 @@ class _FheSeqAbstractBaseClass(ABC):
         ``reverse_complement_rna`` is called on a ``Seq`` object with
         ``inplace=True``.
         """
-        reverse_complement_rna = self._complement_rna(inplace)
-        if inplace:
-            if not isinstance(self, FheSeq):
+        if isinstance(self, FheSeq):
+            if inplace:
                 raise TypeError("Sequence is immutable")
+            reverse_complement_rna = self.complement_rna()
+        else:
+            reverse_complement_rna = self.complement_rna(inplace)
+
         reverse_complement_rna._data[::-1] = reverse_complement_rna._data
         return reverse_complement_rna
 
-    def _transcribe(self, inplace=False):
+    def transcribe(self, inplace=False):
         """Transcribe a DNA sequence into RNA and return the RNA sequence as a new Seq object.
 
         As ``Seq`` objects are immutable, a ``TypeError`` is raised if
@@ -658,7 +664,7 @@ class _FheSeqAbstractBaseClass(ABC):
         else:
             return self.__class__(transcribed_seq, self._interface)
 
-    def _back_transcribe(self, inplace=False):
+    def back_transcribe(self, inplace=False):
         """Return the DNA sequence from an RNA sequence by creating a new Seq object.
 
         The sequence is modified in-place and returned if inplace is True:
@@ -742,22 +748,22 @@ class FheSeq(_FheSeqAbstractBaseClass):
         super().__init__(data, seq_interface, length=length)
 
     def complement(self):
-        return super()._complement(False)
+        return super().complement(False)
 
     def complement_rna(self):
-        return super()._complement_rna(False)
+        return super().complement_rna(False)
 
     def reverse_complement(self):
-        return super()._reverse_complement(False)
+        return super().reverse_complement(False)
 
     def reverse_complement_rna(self):
-        return super()._reverse_complement_rna(False)
+        return super().reverse_complement_rna(False)
 
     def transcribe(self):
-        return super()._transcribe(False)
+        return super().transcribe(False)
 
     def back_transcribe(self):
-        return super()._back_transcribe(False)
+        return super().back_transcribe(False)
 
 
 class FheMutableSeq(_FheSeqAbstractBaseClass):
@@ -841,20 +847,3 @@ class FheMutableSeq(_FheSeqAbstractBaseClass):
         else:
             raise TypeError("expected a string, Seq or MutableSeq")
 
-    def complement(self, inplace=False):
-        return super()._complement(inplace)
-
-    def complement_rna(self, inplace=False):
-        return super()._complement_rna(inplace)
-
-    def reverse_complement(self, inplace=False):
-        return super()._reverse_complement(inplace)
-
-    def reverse_complement_rna(self, inplace=False):
-        return super()._reverse_complement_rna(inplace)
-
-    def transcribe(self, inplace=False):
-        return super()._transcribe(inplace)
-
-    def back_transcribe(self, inplace=False):
-        return super()._back_transcribe(inplace)
