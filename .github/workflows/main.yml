@@ -1,103 +1,103 @@
-# Real Consulting Data CI.
+# Tekkare CI.
 name: CI
-env:
-  REDSHIFT_PASSWORD: ${{ secrets.redshift_password }}
-  SNOWFLAKE_PASSWORD: ${{ secrets.snowflake_password }}
-  ELASTICSEARCH_PASSWORD: ${{ secrets.elasticsearch_password }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key }}
+# env:
+#   REDSHIFT_PASSWORD: ${{ secrets.redshift_password }}
+#   SNOWFLAKE_PASSWORD: ${{ secrets.snowflake_password }}
+#   ELASTICSEARCH_PASSWORD: ${{ secrets.elasticsearch_password }}
+#   AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key }}
 
-# Controls when the workflow will run
-on:
-  # Triggers the workflow on push or pull request events but only for the main branch
-#  pull_request:
-#    types: [ closed ]
-#    branches: [ main ]
-  push:
-    branches:
-      # - develop
-      - main
+# # Controls when the workflow will run
+# on:
+#   # Triggers the workflow on push or pull request events but only for the main branch
+# #  pull_request:
+# #    types: [ closed ]
+# #    branches: [ main ]
+#   push:
+#     branches:
+#       # - develop
+#       - main
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+#   # Allows you to run this workflow manually from the Actions tab
+#   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
-  # This workflow contains a single job called "build"
-  ci:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+# # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# jobs:
+#   # This workflow contains a single job called "build"
+#   ci:
+#     # The type of runner that the job will run on
+#     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
+#     # Steps represent a sequence of tasks that will be executed as part of the job
+#     steps:
+#       - name: Set up Python 3.9
+#         uses: actions/setup-python@v2
+#         with:
+#           python-version: 3.9
 
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Check-out repository
-        uses: actions/checkout@v3
+#       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+#       - name: Check-out repository
+#         uses: actions/checkout@v3
 
-      - run: echo "::set-output name=PACKAGE_VERSION::$(cat pyproject.toml | grep version | head -1 | awk -F'"' '{ print $2 }')"
-        id: package_version
+#       - run: echo "::set-output name=PACKAGE_VERSION::$(cat pyproject.toml | grep version | head -1 | awk -F'"' '{ print $2 }')"
+#         id: package_version
 
-      # - name: Set .env file containing the non-secret values
-      #   run: mv .env.ci .env
+#       # - name: Set .env file containing the non-secret values
+#       #   run: mv .env.ci .env
 
-      - name: Install poetry
-        uses: snok/install-poetry@v1
+#       - name: Install poetry
+#         uses: snok/install-poetry@v1
 
-      - name: Install package
-        run: poetry install
+#       - name: Install package
+#         run: poetry install
 
-      - name: Coverage Test | A summary of how much our pytest covers
-        run: poetry run pytest -v tests/
+#       - name: Coverage Test | A summary of how much our pytest covers
+#         run: poetry run pytest -v tests/
 
-  cd:
-    # This condition is important, but it should be triggered only when the PR is merged into main.
-    # If it's in the develop branch, it should trigger only the ci job.
-    # if: (github.event.pull_request.merged == true) && (github.ref == 'refs/heads/main') # Only run this job if new work is pushed to "main"
-    if: github.ref == 'refs/heads/main' # Only run this job if new work is pushed to "main"
-    needs: ci # Only run this job if the "ci" job passes
+#   cd:
+#     # This condition is important, but it should be triggered only when the PR is merged into main.
+#     # If it's in the develop branch, it should trigger only the ci job.
+#     # if: (github.event.pull_request.merged == true) && (github.ref == 'refs/heads/main') # Only run this job if new work is pushed to "main"
+#     if: github.ref == 'refs/heads/main' # Only run this job if new work is pushed to "main"
+#     needs: ci # Only run this job if the "ci" job passes
 
-    # Set up operating system
-    runs-on: ubuntu-latest
+#     # Set up operating system
+#     runs-on: ubuntu-latest
 
-    # Define job steps
-    steps:
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
+#     # Define job steps
+#     steps:
+#       - name: Set up Python 3.9
+#         uses: actions/setup-python@v2
+#         with:
+#           python-version: 3.9
 
-      - name: Check-out repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+#       - name: Check-out repository
+#         uses: actions/checkout@v2
+#         with:
+#           fetch-depth: 0
 
-      - run: echo "::set-output name=PACKAGE_VERSION::$(cat pyproject.toml | grep version | head -1 | awk -F'"' '{ print $2 }')"
-        id: package_version
+#       - run: echo "::set-output name=PACKAGE_VERSION::$(cat pyproject.toml | grep version | head -1 | awk -F'"' '{ print $2 }')"
+#         id: package_version
 
-      - name: Install poetry
-        uses: snok/install-poetry@v1
+#       - name: Install poetry
+#         uses: snok/install-poetry@v1
 
-      - name: Install package
-        run: poetry install
+#       - name: Install package
+#         run: poetry install
 
-      - name: Building rcd-dev-kit Package
-        run: poetry build
+#       - name: Building rcd-dev-kit Package
+#         run: poetry build
 
-      # - name: Build Documentation
-      #   run: poetry run make html --directory docs/
+#       # - name: Build Documentation
+#       #   run: poetry run make html --directory docs/
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+#       - name: Publish to PyPI
+#         uses: pypa/gh-action-pypi-publish@release/v1
+#         with:
+#           user: __token__
+#           password: ${{ secrets.PYPI_API_TOKEN }}
 
-      - name: Test install from PyPI
-        run: pip install concrete_biopython
+#       - name: Test install from PyPI
+#         run: pip install concrete_biopython
 
       # - name: Uploading html doc into S3 bucket
       #   uses: jakejarvis/s3-sync-action@master
